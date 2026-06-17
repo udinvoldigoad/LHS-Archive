@@ -256,7 +256,7 @@ img {
     background:
         linear-gradient(90deg, rgba(18, 20, 20, 0.88), rgba(18, 20, 20, 0.42) 42%, rgba(18, 20, 20, 0.82)),
         linear-gradient(180deg, rgba(18, 20, 20, 0.38), rgba(18, 20, 20, 0.22) 38%, rgba(18, 20, 20, 0.92) 86%, var(--surface)),
-        url("/images/hero-background.jpg");
+        url("../images/hero-background.jpg");
     background-position: center;
     background-size: cover;
     filter: saturate(0.86) contrast(1.06) brightness(0.78);

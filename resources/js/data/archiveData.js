@@ -1,3 +1,5 @@
+import heroBackgroundUrl from '../../images/hero-background.jpg';
+
 export const siteSettings = {
     title: 'LHS Archive',
     tagline: 'Tempat kecil buat nyimpen semua hal yang pernah rame bareng.',
@@ -59,7 +61,7 @@ export const bestMoment = {
     label: 'Featured',
     title: 'Malam Keakraban 2023',
     description: 'Satu video buat membuktikan kalau chaos juga bisa terlihat sinematik.',
-    thumbnailUrl: '/images/hero-background.jpg',
+    thumbnailUrl: heroBackgroundUrl,
     videoUrl: '',
 };
 
