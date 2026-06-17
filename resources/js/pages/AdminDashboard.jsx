@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     Bell,
     Camera,
@@ -18,10 +18,8 @@ import {
     Settings,
     Tags,
     Trash2,
-    Upload,
     UsersRound,
     Volume2,
-    X,
 } from 'lucide-react';
 import {
     archiveLinks as fallbackArchiveLinks,
@@ -51,8 +49,11 @@ import {
     updateAdminMoment,
     updateAdminPhoto,
     updateAdminSettings,
-    uploadAdminMedia,
 } from '../services/api.js';
+import AdminEmptyState from '../components/admin/AdminEmptyState.jsx';
+import AdminModal from '../components/admin/AdminModal.jsx';
+import UploadField from '../components/admin/UploadField.jsx';
+import { formatMediaName } from '../utils/media.js';
 
 const adminPanels = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -240,141 +241,6 @@ function PanelHeader({ title, description, actionLabel, actionIcon: ActionIcon =
                     {actionLabel}
                 </button>
             ) : null}
-        </div>
-    );
-}
-
-function AdminModal({ children, eyebrow, isOpen, onClose, title }) {
-    useEffect(() => {
-        if (!isOpen) {
-            return undefined;
-        }
-
-        const previousBodyOverflow = document.body.style.overflow;
-        const previousHtmlOverflow = document.documentElement.style.overflow;
-
-        document.body.style.overflow = 'hidden';
-        document.documentElement.style.overflow = 'hidden';
-
-        function closeOnEscape(event) {
-            if (event.key === 'Escape') {
-                onClose?.();
-            }
-        }
-
-        window.addEventListener('keydown', closeOnEscape);
-
-        return () => {
-            document.body.style.overflow = previousBodyOverflow;
-            document.documentElement.style.overflow = previousHtmlOverflow;
-            window.removeEventListener('keydown', closeOnEscape);
-        };
-    }, [isOpen]);
-
-    if (!isOpen) {
-        return null;
-    }
-
-    function closeFromBackdrop(event) {
-        if (event.target === event.currentTarget) {
-            onClose?.();
-        }
-    }
-
-    return (
-        <div className="admin-modal-backdrop" onMouseDown={closeFromBackdrop}>
-            <section aria-modal="true" className="admin-modal" role="dialog">
-                <header className="admin-modal-header">
-                    <div>
-                        {eyebrow ? <p className="archive-kicker">{eyebrow}</p> : null}
-                        <h3>{title}</h3>
-                    </div>
-                    <button className="admin-modal-close" type="button" title="Close modal" onClick={onClose}>
-                        <X size={20} aria-hidden="true" />
-                    </button>
-                </header>
-                <div className="admin-modal-body">{children}</div>
-            </section>
-        </div>
-    );
-}
-
-function AdminEmptyState({ children, icon: Icon = FileText, title }) {
-    return (
-        <div className="admin-empty-state">
-            <Icon size={28} aria-hidden="true" />
-            <h3>{title}</h3>
-            <p>{children}</p>
-        </div>
-    );
-}
-
-function UploadField({ accept, currentUrl = '', kind, label, onClear, onUploaded, token }) {
-    const [status, setStatus] = useState('idle');
-    const [error, setError] = useState('');
-    const inputRef = useRef(null);
-
-    async function uploadFile(event) {
-        const file = event.target.files?.[0];
-        event.target.value = '';
-
-        if (!file) {
-            return;
-        }
-
-        setStatus('uploading');
-        setError('');
-
-        try {
-            const media = await uploadAdminMedia(token, file, kind);
-            onUploaded?.(media.url);
-            setStatus('uploaded');
-        } catch (uploadError) {
-            setError(resolveFormError(uploadError));
-            setStatus('idle');
-        }
-    }
-
-    return (
-        <div className="admin-upload-inline">
-            <div className="admin-upload-current">
-                <span>{currentUrl ? formatMediaName(currentUrl) : 'No file uploaded yet.'}</span>
-                {currentUrl ? (
-                    <a href={currentUrl} target="_blank" rel="noreferrer">
-                        Preview
-                    </a>
-                ) : null}
-                {currentUrl && onClear ? (
-                    <button
-                        className="admin-upload-clear"
-                        type="button"
-                        onClick={() => {
-                            setStatus('idle');
-                            onClear();
-                        }}
-                    >
-                        Clear
-                    </button>
-                ) : null}
-            </div>
-            <button
-                className="admin-upload-trigger"
-                type="button"
-                disabled={status === 'uploading'}
-                onClick={() => inputRef.current?.click()}
-            >
-                <Upload size={17} aria-hidden="true" />
-                {status === 'uploading' ? 'Uploading...' : label}
-            </button>
-            <input
-                accept={accept}
-                disabled={status === 'uploading'}
-                ref={inputRef}
-                type="file"
-                onChange={uploadFile}
-            />
-            {status === 'uploaded' ? <span>Uploaded. URL field updated.</span> : null}
-            {error ? <p className="admin-form-error">{error}</p> : null}
         </div>
     );
 }
@@ -2107,25 +1973,6 @@ function createSettingsPayload(siteSettings, bestMoment, overrides = {}) {
         background_music_url: siteSettings.music?.url || null,
         ...overrides,
     };
-}
-
-function formatMediaName(url) {
-    if (!url) {
-        return '';
-    }
-
-    const cleanUrl = url.split('?')[0].split('#')[0];
-    const fileName = cleanUrl.split('/').filter(Boolean).pop();
-
-    if (!fileName) {
-        return 'Current file ready';
-    }
-
-    try {
-        return decodeURIComponent(fileName);
-    } catch {
-        return fileName;
-    }
 }
 
 function resolveFormError(error) {

@@ -1,0 +1,159 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Link;
+use App\Models\Moment;
+use App\Models\Photo;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
+use Tests\TestCase;
+
+class ArchiveApiTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        if (! extension_loaded('pdo_sqlite')) {
+            $this->markTestSkipped('The pdo_sqlite extension is required for archive database feature tests.');
+        }
+
+        parent::setUp();
+    }
+
+    public function test_public_archive_returns_empty_arrays_when_database_is_empty(): void
+    {
+        $this->getJson('/api/archive')
+            ->assertOk()
+            ->assertJsonPath('links', [])
+            ->assertJsonPath('moments', [])
+            ->assertJsonPath('members', [])
+            ->assertJsonPath('messages', []);
+    }
+
+    public function test_public_messages_are_hidden_until_admin_approves_them(): void
+    {
+        $this->postJson('/api/messages', [
+            'name' => 'Visitor',
+            'message' => 'Tunggu approve dulu.',
+        ])
+            ->assertCreated()
+            ->assertJsonPath('is_visible', false);
+
+        $this->assertDatabaseHas('messages', [
+            'name' => 'Visitor',
+            'is_visible' => false,
+        ]);
+
+        $this->getJson('/api/messages')
+            ->assertOk()
+            ->assertJsonCount(0);
+    }
+
+    public function test_admin_upload_returns_a_relative_storage_url(): void
+    {
+        Storage::fake('public');
+
+        $this->withAdminToken()
+            ->post('/api/admin/uploads', [
+                'kind' => 'image',
+                'file' => UploadedFile::fake()->image('memory.jpg'),
+            ])
+            ->assertCreated()
+            ->assertJsonPath('kind', 'image')
+            ->assertJson(fn ($json) => $json
+                ->where('url', fn (string $url) => str_starts_with($url, '/storage/archive/images/'))
+                ->etc()
+            );
+    }
+
+    public function test_admin_media_paths_validate_and_old_link_media_is_cleaned_up(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('archive/images/old.jpg', 'old');
+        Storage::disk('public')->put('archive/images/new.jpg', 'new');
+
+        $link = Link::create([
+            'title' => 'Drive',
+            'url' => 'https://example.com',
+            'thumbnail_url' => '/storage/archive/images/old.jpg',
+        ]);
+
+        $this->withAdminToken()
+            ->putJson('/api/admin/links/'.$link->id, [
+                'category_id' => null,
+                'title' => 'Drive Updated',
+                'description' => null,
+                'url' => 'https://example.com',
+                'thumbnail_url' => '/storage/archive/images/new.jpg',
+                'is_featured' => false,
+                'sort_order' => 0,
+            ])
+            ->assertOk()
+            ->assertJsonPath('thumbnail_url', '/storage/archive/images/new.jpg');
+
+        Storage::disk('public')->assertMissing('archive/images/old.jpg');
+        Storage::disk('public')->assertExists('archive/images/new.jpg');
+    }
+
+    public function test_deleting_a_moment_cleans_up_uploaded_photo_files(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('archive/images/moment.jpg', 'image');
+
+        $moment = Moment::create([
+            'title' => 'Uploaded Moment',
+            'slug' => 'uploaded-moment',
+        ]);
+        Photo::create([
+            'moment_id' => $moment->id,
+            'image_url' => '/storage/archive/images/moment.jpg',
+        ]);
+
+        $this->withAdminToken()
+            ->deleteJson('/api/admin/moments/'.$moment->id)
+            ->assertOk();
+
+        $this->assertDatabaseMissing('moments', ['id' => $moment->id]);
+        $this->assertDatabaseMissing('photos', ['moment_id' => $moment->id]);
+        Storage::disk('public')->assertMissing('archive/images/moment.jpg');
+    }
+
+    public function test_admin_can_create_update_and_delete_categories(): void
+    {
+        $response = $this->withAdminToken()
+            ->postJson('/api/admin/categories', [
+                'name' => 'Dokumentasi',
+                'slug' => 'dokumentasi',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('slug', 'dokumentasi');
+
+        $categoryId = $response->json('id');
+
+        $this->withAdminToken()
+            ->putJson('/api/admin/categories/'.$categoryId, [
+                'name' => 'Dokumentasi Baru',
+                'slug' => 'dokumentasi-baru',
+            ])
+            ->assertOk()
+            ->assertJsonPath('name', 'Dokumentasi Baru');
+
+        $this->withAdminToken()
+            ->deleteJson('/api/admin/categories/'.$categoryId)
+            ->assertOk();
+
+        $this->assertDatabaseMissing('categories', ['id' => $categoryId]);
+    }
+
+    private function withAdminToken(): self
+    {
+        $token = 'test-admin-token';
+        Cache::put('admin-token:'.$token, true, now()->addMinutes(5));
+
+        return $this->withHeader('Authorization', 'Bearer '.$token);
+    }
+}

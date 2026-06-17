@@ -51,10 +51,10 @@ export default function Home() {
                 setArchive((current) => ({
                     settings: data.settings ?? current.settings,
                     bestMoment: data.bestMoment ?? current.bestMoment,
-                    links: data.links?.length ? data.links : current.links,
-                    moments: data.moments?.length ? data.moments : current.moments,
-                    members: data.members?.length ? data.members : current.members,
-                    messages: data.messages?.length ? data.messages : current.messages,
+                    links: Array.isArray(data.links) ? data.links : current.links,
+                    moments: Array.isArray(data.moments) ? data.moments : current.moments,
+                    members: Array.isArray(data.members) ? data.members : current.members,
+                    messages: Array.isArray(data.messages) ? data.messages : current.messages,
                 }));
             })
             .catch(() => {
@@ -123,7 +123,11 @@ export default function Home() {
             <Modal open={Boolean(activePhoto)} onClose={() => setActivePhoto(null)} labelledBy="photo-modal-title">
                 {activePhoto ? (
                     <div className="photo-modal">
-                        <img src={activePhoto.imageUrl} alt={activePhoto.title} />
+                        {activePhoto.imageUrl ? (
+                            <img src={activePhoto.imageUrl} alt={activePhoto.title} />
+                        ) : (
+                            <div className="archive-media-placeholder">No photo</div>
+                        )}
                         <div>
                             <p className="archive-kicker">Polaroid Memory</p>
                             <h2 id="photo-modal-title">{activePhoto.title}</h2>
@@ -136,7 +140,11 @@ export default function Home() {
             <Modal open={Boolean(activeMember)} onClose={() => setActiveMember(null)} labelledBy="member-modal-title">
                 {activeMember ? (
                     <div className="member-modal">
-                        <img src={activeMember.photoUrl} alt={activeMember.name} />
+                        {activeMember.photoUrl ? (
+                            <img src={activeMember.photoUrl} alt={activeMember.name} />
+                        ) : (
+                            <div className="archive-media-placeholder">No photo</div>
+                        )}
                         <div>
                             <p className="archive-kicker">Archived Human</p>
                             <h2 id="member-modal-title">{activeMember.name}</h2>

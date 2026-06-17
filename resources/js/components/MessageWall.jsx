@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Send } from 'lucide-react';
 import SectionHeader from './SectionHeader.jsx';
+import EmptyArchiveState from './EmptyArchiveState.jsx';
 
 export default function MessageWall({ initialMessages, onSubmitMessage }) {
     const [notes, setNotes] = useState(initialMessages);
@@ -29,18 +30,21 @@ export default function MessageWall({ initialMessages, onSubmitMessage }) {
                 ? await onSubmitMessage({ name: trimmedName, message: trimmedMessage })
                 : { name: trimmedName, message: trimmedMessage };
 
-            setNotes([
-                {
-                    ...savedMessage,
-                    name: savedMessage.name ?? trimmedName,
-                    message: savedMessage.message ?? trimmedMessage,
-                    rotation: savedMessage.rotation ?? (notes.length % 2 === 0 ? '1deg' : '-1deg'),
-                },
-                ...notes,
-            ]);
+            if (savedMessage.is_visible || savedMessage.isVisible) {
+                setNotes((currentNotes) => [
+                    {
+                        ...savedMessage,
+                        name: savedMessage.name ?? trimmedName,
+                        message: savedMessage.message ?? trimmedMessage,
+                        rotation: savedMessage.rotation ?? (currentNotes.length % 2 === 0 ? '1deg' : '-1deg'),
+                    },
+                    ...currentNotes,
+                ]);
+            }
+
             setName('');
             setMessage('');
-            setStatus('saved');
+            setStatus(savedMessage.is_visible || savedMessage.isVisible ? 'saved' : 'moderating');
         } catch {
             setStatus('error');
         }
@@ -72,16 +76,26 @@ export default function MessageWall({ initialMessages, onSubmitMessage }) {
                         <Send size={16} aria-hidden="true" />
                         {status === 'saving' ? 'Mengirim...' : 'Kirim Pesan'}
                     </button>
+                    {status === 'moderating' ? (
+                        <p className="form-status-success">Pesan masuk. Tunggu admin approve dulu sebelum muncul.</p>
+                    ) : null}
+                    {status === 'saved' ? <p className="form-status-success">Pesan sudah tampil di wall.</p> : null}
                     {status === 'error' ? <p className="form-status-error">Pesan gagal dikirim. Coba lagi sebentar.</p> : null}
                 </form>
-                <div className="message-wall">
-                    {notes.map((note, index) => (
-                        <article className="sticky-note" style={{ '--tilt': note.rotation }} key={`${note.name}-${index}`}>
-                            <p>{note.message}</p>
-                            <span>{note.name}</span>
-                        </article>
-                    ))}
-                </div>
+                {notes.length ? (
+                    <div className="message-wall">
+                        {notes.map((note, index) => (
+                            <article className="sticky-note" style={{ '--tilt': note.rotation }} key={`${note.id ?? note.name}-${index}`}>
+                                <p>{note.message}</p>
+                                <span>{note.name}</span>
+                            </article>
+                        ))}
+                    </div>
+                ) : (
+                    <EmptyArchiveState title="Belum ada pesan tampil">
+                        Pesan baru akan muncul setelah admin approve. Dramanya tertib dulu.
+                    </EmptyArchiveState>
+                )}
             </div>
         </section>
     );

@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Support\ArchiveMedia;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class UploadController extends Controller
@@ -28,7 +28,7 @@ class UploadController extends Controller
             'kind' => $kind,
             'name' => $file->getClientOriginalName(),
             'path' => $path,
-            'url' => Storage::disk('public')->url($path),
+            'url' => ArchiveMedia::url($path),
             'mime_type' => $file->getMimeType(),
             'size' => $file->getSize(),
         ], 201);

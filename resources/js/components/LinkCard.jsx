@@ -4,7 +4,7 @@ export default function LinkCard({ link }) {
     return (
         <article className="link-card" style={{ '--tilt': link.rotation }}>
             <div className="link-card-media">
-                <img src={link.thumbnailUrl} alt="" />
+                {link.thumbnailUrl ? <img src={link.thumbnailUrl} alt="" /> : <div className="archive-media-placeholder">No thumbnail</div>}
                 <span>{link.category}</span>
             </div>
             <p className="card-category">{link.category}</p>

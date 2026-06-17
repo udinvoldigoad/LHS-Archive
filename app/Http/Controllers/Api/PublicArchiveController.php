@@ -70,7 +70,7 @@ class PublicArchiveController extends Controller
             'message' => ['required', 'string', 'max:500'],
         ]);
 
-        $message = Message::create($validated + ['is_visible' => true]);
+        $message = Message::create($validated + ['is_visible' => false]);
 
         return response()->json($message, 201);
     }

@@ -7,7 +7,7 @@ export default function PolaroidCard({ moment, onOpen }) {
             onClick={onOpen}
         >
             <span className="polaroid-image">
-                <img src={moment.imageUrl} alt={moment.title} />
+                {moment.imageUrl ? <img src={moment.imageUrl} alt={moment.title} /> : <span className="archive-media-placeholder">No photo</span>}
             </span>
             <span className="polaroid-caption">{moment.caption}</span>
         </button>

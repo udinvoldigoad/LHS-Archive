@@ -6,7 +6,7 @@ export default function MemberCard({ member, index, onOpen }) {
     return (
         <article className="member-card" style={{ '--tilt': rotation }}>
             <button type="button" onClick={onOpen}>
-                <img src={member.photoUrl} alt={member.name} />
+                {member.photoUrl ? <img src={member.photoUrl} alt={member.name} /> : <span className="archive-media-placeholder">No photo</span>}
                 <span>Archived Human</span>
                 <h3>{member.name}</h3>
                 <p>{member.role}</p>

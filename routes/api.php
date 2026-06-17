@@ -21,12 +21,12 @@ Route::get('/moments', [PublicArchiveController::class, 'moments']);
 Route::get('/moments/{moment:slug}', [PublicArchiveController::class, 'moment']);
 Route::get('/members', [PublicArchiveController::class, 'members']);
 Route::get('/messages', [PublicArchiveController::class, 'messages']);
-Route::post('/messages', [PublicArchiveController::class, 'storeMessage']);
+Route::post('/messages', [PublicArchiveController::class, 'storeMessage'])->middleware('throttle:5,1');
 
-Route::post('/admin/login', [AdminAuthController::class, 'login']);
+Route::post('/admin/login', [AdminAuthController::class, 'login'])->middleware('throttle:5,1');
 Route::post('/admin/logout', [AdminAuthController::class, 'logout']);
 
-Route::middleware('simple.admin')->prefix('admin')->group(function () {
+Route::middleware(['simple.admin', 'throttle:120,1'])->prefix('admin')->group(function () {
     Route::get('/dashboard', DashboardController::class);
     Route::post('/uploads', [UploadController::class, 'store']);
     Route::get('/settings', [SettingController::class, 'show']);

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Moment;
+use App\Support\ArchiveMedia;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -39,6 +40,12 @@ class MomentController extends Controller
 
     public function destroy(Moment $moment)
     {
+        $moment->load('photos');
+
+        foreach ($moment->photos as $photo) {
+            ArchiveMedia::delete($photo->image_url);
+        }
+
         $moment->delete();
 
         return response()->json(['message' => 'Moment deleted']);

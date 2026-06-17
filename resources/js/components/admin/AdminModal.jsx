@@ -1,11 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 
-export default function Modal({ open, onClose, labelledBy, children }) {
-    const panelRef = useRef(null);
+export default function AdminModal({ children, eyebrow, isOpen, onClose, title }) {
+    const dialogRef = useRef(null);
 
     useEffect(() => {
-        if (!open) {
+        if (!isOpen) {
             return undefined;
         }
 
@@ -17,10 +17,11 @@ export default function Modal({ open, onClose, labelledBy, children }) {
         document.documentElement.style.overflow = 'hidden';
 
         requestAnimationFrame(() => {
-            getFocusableElements(panelRef.current)[0]?.focus();
+            const firstFocusable = getFocusableElements(dialogRef.current)[0];
+            firstFocusable?.focus();
         });
 
-        function handleKeydown(event) {
+        function handleModalKeydown(event) {
             if (event.key === 'Escape') {
                 onClose?.();
                 return;
@@ -30,7 +31,7 @@ export default function Modal({ open, onClose, labelledBy, children }) {
                 return;
             }
 
-            const focusableElements = getFocusableElements(panelRef.current);
+            const focusableElements = getFocusableElements(dialogRef.current);
 
             if (!focusableElements.length) {
                 return;
@@ -48,34 +49,39 @@ export default function Modal({ open, onClose, labelledBy, children }) {
             }
         }
 
-        window.addEventListener('keydown', handleKeydown);
+        window.addEventListener('keydown', handleModalKeydown);
 
         return () => {
             document.body.style.overflow = previousBodyOverflow;
             document.documentElement.style.overflow = previousHtmlOverflow;
-            window.removeEventListener('keydown', handleKeydown);
+            window.removeEventListener('keydown', handleModalKeydown);
             previousActiveElement?.focus?.();
         };
-    }, [open]);
+    }, [isOpen]);
 
-    if (!open) {
+    if (!isOpen) {
         return null;
     }
 
+    function closeFromBackdrop(event) {
+        if (event.target === event.currentTarget) {
+            onClose?.();
+        }
+    }
+
     return (
-        <div className="modal-backdrop" role="presentation" onClick={onClose}>
-            <section
-                className="modal-panel"
-                ref={panelRef}
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby={labelledBy}
-                onClick={(event) => event.stopPropagation()}
-            >
-                <button className="modal-close" type="button" onClick={onClose} title="Close modal">
-                    <X size={20} aria-hidden="true" />
-                </button>
-                {children}
+        <div className="admin-modal-backdrop" onMouseDown={closeFromBackdrop}>
+            <section aria-label={title} aria-modal="true" className="admin-modal" ref={dialogRef} role="dialog">
+                <header className="admin-modal-header">
+                    <div>
+                        {eyebrow ? <p className="archive-kicker">{eyebrow}</p> : null}
+                        <h3>{title}</h3>
+                    </div>
+                    <button className="admin-modal-close" type="button" title="Close modal" onClick={onClose}>
+                        <X size={20} aria-hidden="true" />
+                    </button>
+                </header>
+                <div className="admin-modal-body">{children}</div>
             </section>
         </div>
     );
