@@ -1898,6 +1898,12 @@ img {
     transform: rotate(0deg) scale(1.02);
 }
 
+.admin-polaroid-admin-card.is-selected {
+    box-shadow: 0 0 24px rgba(168, 240, 74, 0.42);
+    outline: 2px solid var(--primary-container);
+    transform: rotate(0deg);
+}
+
 .admin-polaroid-photo {
     overflow: hidden;
     background: #0b0d0d;
@@ -1908,6 +1914,16 @@ img {
     aspect-ratio: 1 / 1;
     object-fit: cover;
     filter: grayscale(0.62) contrast(1.15);
+}
+
+.admin-empty-photo {
+    display: grid;
+    aspect-ratio: 1 / 1;
+    place-items: center;
+    color: rgba(18, 20, 20, 0.42);
+    background:
+        linear-gradient(135deg, rgba(18, 20, 20, 0.1), rgba(18, 20, 20, 0.02)),
+        var(--paper);
 }
 
 .admin-polaroid-admin-card > div:last-of-type {
@@ -1953,6 +1969,44 @@ img {
 .admin-floating-actions button {
     border: 1px solid rgba(236, 255, 206, 0.5);
     background: var(--surface-soft);
+}
+
+.admin-photo-manager-list {
+    display: grid;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.admin-photo-manager-item {
+    display: grid;
+    grid-template-columns: 72px 1fr auto;
+    gap: 14px;
+    align-items: center;
+    padding: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    background: rgba(18, 20, 20, 0.34);
+}
+
+.admin-photo-manager-item img {
+    width: 72px;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    filter: grayscale(0.45) contrast(1.08);
+}
+
+.admin-photo-manager-item strong {
+    display: block;
+    color: var(--primary);
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 14px;
+}
+
+.admin-photo-manager-item span {
+    display: block;
+    margin-top: 4px;
+    color: var(--on-surface-variant);
+    font-size: 12px;
 }
 
 .admin-video-layout {
@@ -2619,6 +2673,19 @@ img {
 
     .admin-video-preview h3 {
         font-size: 30px;
+    }
+
+    .admin-photo-manager-item {
+        grid-template-columns: 58px 1fr;
+    }
+
+    .admin-photo-manager-item .admin-card-actions {
+        grid-column: 1 / -1;
+        justify-content: flex-end;
+    }
+
+    .admin-photo-manager-item img {
+        width: 58px;
     }
 
     .admin-video-preview p {

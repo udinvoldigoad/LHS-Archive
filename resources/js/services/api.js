@@ -107,3 +107,49 @@ export function deleteAdminLink(token, id) {
         token,
     });
 }
+
+export function createAdminMoment(token, data) {
+    return request('/api/admin/moments', {
+        method: 'POST',
+        token,
+        data,
+    });
+}
+
+export function updateAdminMoment(token, id, data) {
+    return request(`/api/admin/moments/${id}`, {
+        method: 'PUT',
+        token,
+        data,
+    });
+}
+
+export function deleteAdminMoment(token, id) {
+    return request(`/api/admin/moments/${id}`, {
+        method: 'DELETE',
+        token,
+    });
+}
+
+export function createAdminPhoto(token, data) {
+    return request('/api/admin/photos', {
+        method: 'POST',
+        token,
+        data,
+    });
+}
+
+export function updateAdminPhoto(token, id, data) {
+    return request(`/api/admin/photos/${id}`, {
+        method: 'PUT',
+        token,
+        data,
+    });
+}
+
+export function deleteAdminPhoto(token, id) {
+    return request(`/api/admin/photos/${id}`, {
+        method: 'DELETE',
+        token,
+    });
+}

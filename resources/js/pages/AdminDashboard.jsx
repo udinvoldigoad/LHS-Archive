@@ -31,9 +31,15 @@ import {
 } from '../data/archiveData.js';
 import {
     createAdminLink,
+    createAdminMoment,
+    createAdminPhoto,
     deleteAdminLink,
+    deleteAdminMoment,
+    deleteAdminPhoto,
     fetchAdminDashboard,
     updateAdminLink,
+    updateAdminMoment,
+    updateAdminPhoto,
 } from '../services/api.js';
 
 const adminPanels = [
@@ -108,7 +114,9 @@ export default function AdminDashboard({ token, onLogout }) {
                         token={token}
                     />
                 ) : null}
-                {activePanel === 'moments' ? <MomentsPanel moments={adminData.moments} /> : null}
+                {activePanel === 'moments' ? (
+                    <MomentsPanel moments={adminData.moments} onChanged={loadDashboard} token={token} />
+                ) : null}
                 {activePanel === 'video' ? <VideoPanel bestMoment={adminData.bestMoment} /> : null}
                 {activePanel === 'members' ? <MembersPanel members={adminData.members} /> : null}
                 {activePanel === 'messages' ? <MessagesPanel messages={adminData.messages} /> : null}
@@ -537,7 +545,180 @@ function LinksPanel({ categories, links, onChanged, token }) {
     );
 }
 
-function MomentsPanel({ moments }) {
+function MomentsPanel({ moments, onChanged, token }) {
+    const [editingMoment, setEditingMoment] = useState(null);
+    const [momentForm, setMomentForm] = useState(createEmptyMomentForm());
+    const [momentFormStatus, setMomentFormStatus] = useState('idle');
+    const [photoMoment, setPhotoMoment] = useState(null);
+    const [editingPhoto, setEditingPhoto] = useState(null);
+    const [photoForm, setPhotoForm] = useState(createEmptyPhotoForm());
+    const [photoFormStatus, setPhotoFormStatus] = useState('idle');
+    const [panelError, setPanelError] = useState('');
+    const isEditingMoment = Boolean(editingMoment);
+    const isEditingPhoto = Boolean(editingPhoto);
+
+    function openCreateMomentForm() {
+        setEditingMoment(null);
+        setMomentForm(createEmptyMomentForm());
+        setMomentFormStatus('editing');
+        setPanelError('');
+    }
+
+    function openEditMomentForm(moment) {
+        setEditingMoment(moment);
+        setMomentForm({
+            title: moment.title ?? '',
+            description: moment.description ?? '',
+            slug: moment.slug ?? '',
+        });
+        setMomentFormStatus('editing');
+        setPanelError('');
+    }
+
+    function closeMomentForm() {
+        setEditingMoment(null);
+        setMomentForm(createEmptyMomentForm());
+        setMomentFormStatus('idle');
+    }
+
+    function updateMomentForm(event) {
+        const { name, value } = event.target;
+
+        setMomentForm((current) => ({
+            ...current,
+            [name]: value,
+        }));
+    }
+
+    async function submitMomentForm(event) {
+        event.preventDefault();
+        setMomentFormStatus('saving');
+        setPanelError('');
+
+        const payload = {
+            title: momentForm.title.trim(),
+            description: momentForm.description.trim() || null,
+            slug: momentForm.slug.trim() || null,
+        };
+
+        try {
+            if (isEditingMoment) {
+                await updateAdminMoment(token, editingMoment.id, payload);
+            } else {
+                await createAdminMoment(token, payload);
+            }
+
+            await onChanged?.();
+            closeMomentForm();
+        } catch (error) {
+            setMomentFormStatus('editing');
+            setPanelError(resolveFormError(error));
+        }
+    }
+
+    async function deleteMoment(moment) {
+        const confirmed = window.confirm(`Hapus moment "${moment.title}" beserta semua fotonya?`);
+
+        if (!confirmed) {
+            return;
+        }
+
+        setPanelError('');
+
+        try {
+            await deleteAdminMoment(token, moment.id);
+            if (photoMoment?.id === moment.id) {
+                closePhotoForm();
+            }
+            await onChanged?.();
+        } catch (error) {
+            setPanelError(resolveFormError(error));
+        }
+    }
+
+    function openCreatePhotoForm(moment) {
+        setPhotoMoment(moment);
+        setEditingPhoto(null);
+        setPhotoForm(createEmptyPhotoForm(moment));
+        setPhotoFormStatus('editing');
+        setPanelError('');
+    }
+
+    function openEditPhotoForm(moment, photo) {
+        setPhotoMoment(moment);
+        setEditingPhoto(photo);
+        setPhotoForm({
+            moment_id: String(moment.id),
+            image_url: photo.imageUrl ?? '',
+            caption: photo.caption ?? '',
+            rotation: photo.rotation ?? '',
+            sort_order: String(photo.sortOrder ?? 0),
+        });
+        setPhotoFormStatus('editing');
+        setPanelError('');
+    }
+
+    function closePhotoForm() {
+        setPhotoMoment(null);
+        setEditingPhoto(null);
+        setPhotoForm(createEmptyPhotoForm());
+        setPhotoFormStatus('idle');
+    }
+
+    function updatePhotoForm(event) {
+        const { name, value } = event.target;
+
+        setPhotoForm((current) => ({
+            ...current,
+            [name]: value,
+        }));
+    }
+
+    async function submitPhotoForm(event) {
+        event.preventDefault();
+        setPhotoFormStatus('saving');
+        setPanelError('');
+
+        const payload = {
+            moment_id: Number(photoForm.moment_id),
+            image_url: photoForm.image_url.trim(),
+            caption: photoForm.caption.trim() || null,
+            rotation: photoForm.rotation.trim() || null,
+            sort_order: Number(photoForm.sort_order || 0),
+        };
+
+        try {
+            if (isEditingPhoto) {
+                await updateAdminPhoto(token, editingPhoto.id, payload);
+            } else {
+                await createAdminPhoto(token, payload);
+            }
+
+            await onChanged?.();
+            closePhotoForm();
+        } catch (error) {
+            setPhotoFormStatus('editing');
+            setPanelError(resolveFormError(error));
+        }
+    }
+
+    async function deletePhoto(moment, photo) {
+        const confirmed = window.confirm(`Hapus foto dari moment "${moment.title}"?`);
+
+        if (!confirmed) {
+            return;
+        }
+
+        setPanelError('');
+
+        try {
+            await deleteAdminPhoto(token, photo.id);
+            await onChanged?.();
+        } catch (error) {
+            setPanelError(resolveFormError(error));
+        }
+    }
+
     return (
         <section className="admin-panel">
             <PanelHeader
@@ -545,23 +726,174 @@ function MomentsPanel({ moments }) {
                 description="Curate the chaotic memory archive."
                 actionLabel="New Moment"
                 actionIcon={ImagePlus}
+                onAction={openCreateMomentForm}
             />
+
+            {panelError ? <p className="admin-form-error">{panelError}</p> : null}
+
+            {momentFormStatus !== 'idle' ? (
+                <form className="admin-link-form" onSubmit={submitMomentForm}>
+                    <div className="admin-link-form-heading">
+                        <div>
+                            <p className="archive-kicker">{isEditingMoment ? 'Edit Moment' : 'New Moment'}</p>
+                            <h3>{isEditingMoment ? editingMoment.title : 'Tambah Polaroid Moment'}</h3>
+                        </div>
+                        <button type="button" onClick={closeMomentForm}>
+                            Cancel
+                        </button>
+                    </div>
+
+                    <div className="admin-link-form-grid">
+                        <label>
+                            Title
+                            <input
+                                name="title"
+                                type="text"
+                                value={momentForm.title}
+                                onChange={updateMomentForm}
+                                placeholder="Malam paling chaos"
+                                required
+                            />
+                        </label>
+                        <label>
+                            Slug
+                            <input
+                                name="slug"
+                                type="text"
+                                value={momentForm.slug}
+                                onChange={updateMomentForm}
+                                placeholder="malam-paling-chaos"
+                            />
+                        </label>
+                        <label className="admin-link-form-wide">
+                            Description
+                            <textarea
+                                name="description"
+                                value={momentForm.description}
+                                onChange={updateMomentForm}
+                                placeholder="Deskripsi singkat moment"
+                                rows="3"
+                            />
+                        </label>
+                    </div>
+
+                    <div className="admin-link-form-actions">
+                        <button className="admin-action-button" type="submit" disabled={momentFormStatus === 'saving'}>
+                            <Save size={18} aria-hidden="true" />
+                            {momentFormStatus === 'saving' ? 'Saving...' : isEditingMoment ? 'Save Moment' : 'Create Moment'}
+                        </button>
+                    </div>
+                </form>
+            ) : null}
+
+            {photoFormStatus !== 'idle' ? (
+                <form className="admin-link-form" onSubmit={submitPhotoForm}>
+                    <div className="admin-link-form-heading">
+                        <div>
+                            <p className="archive-kicker">{isEditingPhoto ? 'Edit Photo' : 'New Photo'}</p>
+                            <h3>{photoMoment?.title ?? 'Foto Moment'}</h3>
+                        </div>
+                        <button type="button" onClick={closePhotoForm}>
+                            Cancel
+                        </button>
+                    </div>
+
+                    <div className="admin-link-form-grid">
+                        <label>
+                            Image URL
+                            <input
+                                name="image_url"
+                                type="url"
+                                value={photoForm.image_url}
+                                onChange={updatePhotoForm}
+                                placeholder="https://images.example.com/photo.jpg"
+                                required
+                            />
+                        </label>
+                        <label>
+                            Rotation
+                            <input
+                                name="rotation"
+                                type="text"
+                                value={photoForm.rotation}
+                                onChange={updatePhotoForm}
+                                placeholder="-2deg"
+                            />
+                        </label>
+                        <label>
+                            Sort Order
+                            <input
+                                name="sort_order"
+                                type="number"
+                                min="0"
+                                value={photoForm.sort_order}
+                                onChange={updatePhotoForm}
+                            />
+                        </label>
+                        <label className="admin-link-form-wide">
+                            Caption
+                            <textarea
+                                name="caption"
+                                value={photoForm.caption}
+                                onChange={updatePhotoForm}
+                                placeholder="Foto blur, memorinya jelas."
+                                rows="3"
+                            />
+                        </label>
+                    </div>
+
+                    {photoMoment?.photos?.length ? (
+                        <div className="admin-photo-manager-list">
+                            {photoMoment.photos.map((photo) => (
+                                <article className="admin-photo-manager-item" key={photo.id}>
+                                    <img src={photo.imageUrl} alt={photo.caption || photoMoment.title} />
+                                    <div>
+                                        <strong>{photo.caption || 'No caption yet'}</strong>
+                                        <span>{photo.rotation || '0deg'} / order {photo.sortOrder ?? 0}</span>
+                                    </div>
+                                    <AdminCardActions
+                                        onDelete={() => deletePhoto(photoMoment, photo)}
+                                        onEdit={() => openEditPhotoForm(photoMoment, photo)}
+                                    />
+                                </article>
+                            ))}
+                        </div>
+                    ) : null}
+
+                    <div className="admin-link-form-actions">
+                        <button className="admin-action-button" type="submit" disabled={photoFormStatus === 'saving'}>
+                            <Save size={18} aria-hidden="true" />
+                            {photoFormStatus === 'saving' ? 'Saving...' : isEditingPhoto ? 'Save Photo' : 'Create Photo'}
+                        </button>
+                    </div>
+                </form>
+            ) : null}
 
             <div className="admin-polaroid-grid">
                 {moments.map((moment, index) => (
                     <article
-                        className="admin-polaroid-admin-card"
-                        key={moment.title}
+                        className={photoMoment?.id === moment.id ? 'admin-polaroid-admin-card is-selected' : 'admin-polaroid-admin-card'}
+                        key={moment.id ?? moment.title}
                         style={{ '--tilt': moment.rotation }}
                     >
                         <div className="admin-polaroid-photo">
-                            <img src={moment.imageUrl} alt={moment.title} />
+                            {moment.imageUrl ? (
+                                <img src={moment.imageUrl} alt={moment.title} />
+                            ) : (
+                                <div className="admin-empty-photo">
+                                    <Camera size={42} aria-hidden="true" />
+                                </div>
+                            )}
                         </div>
                         <div>
                             <p>{moment.title}</p>
                             <span>{moment.photoCount ?? momentPhotoCounts[index] ?? 6} Photos</span>
                         </div>
-                        <AdminFloatingActions />
+                        <AdminFloatingActions
+                            onAddPhoto={() => openCreatePhotoForm(moment)}
+                            onDelete={() => deleteMoment(moment)}
+                            onEdit={() => openEditMomentForm(moment)}
+                        />
                     </article>
                 ))}
             </div>
@@ -863,6 +1195,24 @@ function createEmptyLinkForm(categories) {
     };
 }
 
+function createEmptyMomentForm() {
+    return {
+        title: '',
+        description: '',
+        slug: '',
+    };
+}
+
+function createEmptyPhotoForm(moment = null) {
+    return {
+        moment_id: moment?.id ? String(moment.id) : '',
+        image_url: '',
+        caption: '',
+        rotation: '',
+        sort_order: String(moment?.photos?.length ?? 0),
+    };
+}
+
 function resolveFormError(error) {
     if (error.payload?.errors) {
         return Object.values(error.payload.errors).flat().join(' ');
@@ -884,13 +1234,16 @@ function AdminCardActions({ onDelete, onEdit }) {
     );
 }
 
-function AdminFloatingActions() {
+function AdminFloatingActions({ onAddPhoto, onDelete, onEdit }) {
     return (
         <div className="admin-floating-actions" aria-label="Moment actions">
-            <button type="button" title="Edit">
+            <button type="button" title="Edit moment" onClick={onEdit}>
                 <Edit3 size={18} aria-hidden="true" />
             </button>
-            <button type="button" title="Delete">
+            <button type="button" title="Add photo" onClick={onAddPhoto}>
+                <ImagePlus size={18} aria-hidden="true" />
+            </button>
+            <button type="button" title="Delete moment" onClick={onDelete}>
                 <Trash2 size={18} aria-hidden="true" />
             </button>
         </div>
