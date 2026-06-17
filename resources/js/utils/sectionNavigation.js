@@ -1,8 +1,15 @@
-export const sectionIds = ['archive', 'video', 'links', 'gallery', 'humans', 'messages'];
+export const sectionIds = ['archive', 'video', 'links', 'gallery', 'members', 'messages'];
+const sectionAliases = {
+    humans: 'members',
+};
 const sectionTargetStorageKey = 'lhs-archive-section-target';
 
+function normalizeSectionId(id) {
+    return sectionAliases[id] ?? id;
+}
+
 export function getSectionIdFromHash(hash = window.location.hash) {
-    const id = hash.replace('#', '');
+    const id = normalizeSectionId(hash.replace('#', ''));
 
     return sectionIds.includes(id) ? id : '';
 }
@@ -16,12 +23,14 @@ export function cleanHomeHash() {
 }
 
 export function rememberSectionTarget(id) {
-    if (!sectionIds.includes(id)) {
+    const normalizedId = normalizeSectionId(id);
+
+    if (!sectionIds.includes(normalizedId)) {
         return;
     }
 
     try {
-        window.sessionStorage.setItem(sectionTargetStorageKey, id);
+        window.sessionStorage.setItem(sectionTargetStorageKey, normalizedId);
     } catch {
         // Browsers can block sessionStorage in strict privacy modes.
     }
@@ -29,7 +38,7 @@ export function rememberSectionTarget(id) {
 
 export function getRememberedSectionTarget() {
     try {
-        const id = window.sessionStorage.getItem(sectionTargetStorageKey);
+        const id = normalizeSectionId(window.sessionStorage.getItem(sectionTargetStorageKey) ?? '');
 
         return sectionIds.includes(id) ? id : '';
     } catch {
@@ -50,7 +59,7 @@ export function getNavOffset() {
 }
 
 export function scrollToSection(id, behavior = 'smooth') {
-    const section = document.getElementById(id);
+    const section = document.getElementById(normalizeSectionId(id));
 
     if (!section) {
         return false;

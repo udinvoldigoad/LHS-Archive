@@ -15,7 +15,7 @@ export default function Navbar({ title }) {
         { id: 'video', label: 'Video', href: '/#video' },
         { id: 'links', label: 'Archive', href: '/#links' },
         { id: 'gallery', label: 'Gallery', href: '/#gallery' },
-        { id: 'humans', label: 'Humans', href: '/#humans' },
+        { id: 'members', label: 'Members', href: '/#members' },
         { id: 'messages', label: 'Messages', href: '/#messages' },
     ];
 
