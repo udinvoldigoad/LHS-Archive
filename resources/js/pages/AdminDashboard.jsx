@@ -31,13 +31,16 @@ import {
 } from '../data/archiveData.js';
 import {
     createAdminLink,
+    createAdminMember,
     createAdminMoment,
     createAdminPhoto,
     deleteAdminLink,
+    deleteAdminMember,
     deleteAdminMoment,
     deleteAdminPhoto,
     fetchAdminDashboard,
     updateAdminLink,
+    updateAdminMember,
     updateAdminMoment,
     updateAdminPhoto,
 } from '../services/api.js';
@@ -118,7 +121,9 @@ export default function AdminDashboard({ token, onLogout }) {
                     <MomentsPanel moments={adminData.moments} onChanged={loadDashboard} token={token} />
                 ) : null}
                 {activePanel === 'video' ? <VideoPanel bestMoment={adminData.bestMoment} /> : null}
-                {activePanel === 'members' ? <MembersPanel members={adminData.members} /> : null}
+                {activePanel === 'members' ? (
+                    <MembersPanel members={adminData.members} onChanged={loadDashboard} token={token} />
+                ) : null}
                 {activePanel === 'messages' ? <MessagesPanel messages={adminData.messages} /> : null}
                 {activePanel === 'music' ? <MusicPanel siteSettings={adminData.siteSettings} /> : null}
             </main>
@@ -962,7 +967,99 @@ function VideoPanel({ bestMoment }) {
     );
 }
 
-function MembersPanel({ members }) {
+function MembersPanel({ members, onChanged, token }) {
+    const [editingMember, setEditingMember] = useState(null);
+    const [form, setForm] = useState(createEmptyMemberForm());
+    const [formStatus, setFormStatus] = useState('idle');
+    const [panelError, setPanelError] = useState('');
+    const isEditing = Boolean(editingMember);
+
+    function openCreateForm() {
+        setEditingMember(null);
+        setForm(createEmptyMemberForm());
+        setFormStatus('editing');
+        setPanelError('');
+    }
+
+    function openEditForm(member) {
+        setEditingMember(member);
+        setForm({
+            name: member.name ?? '',
+            nickname: member.nickname ?? '',
+            role: member.role ?? '',
+            quote: member.quote ?? '',
+            photo_url: member.photoUrl ?? '',
+            instagram_url: member.instagramUrl ?? '',
+            fun_fact: member.funFact ?? '',
+            sort_order: String(member.sortOrder ?? 0),
+        });
+        setFormStatus('editing');
+        setPanelError('');
+    }
+
+    function closeForm() {
+        setEditingMember(null);
+        setForm(createEmptyMemberForm());
+        setFormStatus('idle');
+    }
+
+    function updateForm(event) {
+        const { name, value } = event.target;
+
+        setForm((current) => ({
+            ...current,
+            [name]: value,
+        }));
+    }
+
+    async function submitForm(event) {
+        event.preventDefault();
+        setFormStatus('saving');
+        setPanelError('');
+
+        const payload = {
+            name: form.name.trim(),
+            nickname: form.nickname.trim() || null,
+            role: form.role.trim() || null,
+            quote: form.quote.trim() || null,
+            photo_url: form.photo_url.trim() || null,
+            instagram_url: form.instagram_url.trim() || null,
+            fun_fact: form.fun_fact.trim() || null,
+            sort_order: Number(form.sort_order || 0),
+        };
+
+        try {
+            if (isEditing) {
+                await updateAdminMember(token, editingMember.id, payload);
+            } else {
+                await createAdminMember(token, payload);
+            }
+
+            await onChanged?.();
+            closeForm();
+        } catch (error) {
+            setFormStatus('editing');
+            setPanelError(resolveFormError(error));
+        }
+    }
+
+    async function deleteMember(member) {
+        const confirmed = window.confirm(`Hapus member "${member.name}" dari archive?`);
+
+        if (!confirmed) {
+            return;
+        }
+
+        setPanelError('');
+
+        try {
+            await deleteAdminMember(token, member.id);
+            await onChanged?.();
+        } catch (error) {
+            setPanelError(resolveFormError(error));
+        }
+    }
+
     return (
         <section className="admin-panel">
             <PanelHeader
@@ -970,20 +1067,138 @@ function MembersPanel({ members }) {
                 description="Archived humans, role absurd, quote, fun fact, dan link sosial."
                 actionLabel="Add Member"
                 actionIcon={UsersRound}
+                onAction={openCreateForm}
             />
+
+            {panelError ? <p className="admin-form-error">{panelError}</p> : null}
+
+            {formStatus !== 'idle' ? (
+                <form className="admin-link-form" onSubmit={submitForm}>
+                    <div className="admin-link-form-heading">
+                        <div>
+                            <p className="archive-kicker">{isEditing ? 'Edit Member' : 'New Member'}</p>
+                            <h3>{isEditing ? editingMember.name : 'Tambah Archived Human'}</h3>
+                        </div>
+                        <button type="button" onClick={closeForm}>
+                            Cancel
+                        </button>
+                    </div>
+
+                    <div className="admin-link-form-grid">
+                        <label>
+                            Name
+                            <input
+                                name="name"
+                                type="text"
+                                value={form.name}
+                                onChange={updateForm}
+                                placeholder="Nama asli"
+                                required
+                            />
+                        </label>
+                        <label>
+                            Nickname
+                            <input
+                                name="nickname"
+                                type="text"
+                                value={form.nickname}
+                                onChange={updateForm}
+                                placeholder="Nama panggilan"
+                            />
+                        </label>
+                        <label>
+                            Role
+                            <input
+                                name="role"
+                                type="text"
+                                value={form.role}
+                                onChange={updateForm}
+                                placeholder="Ketua dokumentasi chaos"
+                            />
+                        </label>
+                        <label>
+                            Sort Order
+                            <input
+                                name="sort_order"
+                                type="number"
+                                min="0"
+                                value={form.sort_order}
+                                onChange={updateForm}
+                            />
+                        </label>
+                        <label className="admin-link-form-wide">
+                            Photo URL
+                            <input
+                                name="photo_url"
+                                type="url"
+                                value={form.photo_url}
+                                onChange={updateForm}
+                                placeholder="https://images.example.com/member.jpg"
+                            />
+                        </label>
+                        <label className="admin-link-form-wide">
+                            Instagram URL
+                            <input
+                                name="instagram_url"
+                                type="url"
+                                value={form.instagram_url}
+                                onChange={updateForm}
+                                placeholder="https://instagram.com/username"
+                            />
+                        </label>
+                        <label className="admin-link-form-wide">
+                            Quote
+                            <textarea
+                                name="quote"
+                                value={form.quote}
+                                onChange={updateForm}
+                                placeholder="Kalimat paling ikonik dari orang ini"
+                                rows="3"
+                            />
+                        </label>
+                        <label className="admin-link-form-wide">
+                            Fun Fact
+                            <textarea
+                                name="fun_fact"
+                                value={form.fun_fact}
+                                onChange={updateForm}
+                                placeholder="Fakta kecil yang terlalu spesifik untuk dilupakan"
+                                rows="3"
+                            />
+                        </label>
+                    </div>
+
+                    <div className="admin-link-form-actions">
+                        <button className="admin-action-button" type="submit" disabled={formStatus === 'saving'}>
+                            <Save size={18} aria-hidden="true" />
+                            {formStatus === 'saving' ? 'Saving...' : isEditing ? 'Save Member' : 'Create Member'}
+                        </button>
+                    </div>
+                </form>
+            ) : null}
 
             <div className="admin-member-grid">
                 {members.map((member, index) => (
                     <article
                         className="admin-member-admin-card"
-                        key={member.name}
+                        key={member.id ?? member.name}
                         style={{ '--tilt': index % 2 === 0 ? '-0.6deg' : '0.7deg' }}
                     >
-                        <img src={member.photoUrl} alt={member.name} />
-                        <span>{member.role}</span>
+                        {member.photoUrl ? (
+                            <img src={member.photoUrl} alt={member.name} />
+                        ) : (
+                            <div className="admin-member-empty-photo">
+                                <UsersRound size={38} aria-hidden="true" />
+                            </div>
+                        )}
+                        <span>{member.role || 'Archived Human'}</span>
                         <h3>{member.name}</h3>
-                        <p>{member.quote}</p>
-                        <AdminCardActions />
+                        {member.nickname ? <small className="admin-member-nickname">@{member.nickname}</small> : null}
+                        <p>{member.quote || 'Belum ada quote. Masih misterius, masih valid.'}</p>
+                        {member.funFact ? <small className="admin-member-fun-fact">{member.funFact}</small> : null}
+                        {member.id ? (
+                            <AdminCardActions onDelete={() => deleteMember(member)} onEdit={() => openEditForm(member)} />
+                        ) : null}
                     </article>
                 ))}
             </div>
@@ -1210,6 +1425,19 @@ function createEmptyPhotoForm(moment = null) {
         caption: '',
         rotation: '',
         sort_order: String(moment?.photos?.length ?? 0),
+    };
+}
+
+function createEmptyMemberForm() {
+    return {
+        name: '',
+        nickname: '',
+        role: '',
+        quote: '',
+        photo_url: '',
+        instagram_url: '',
+        fun_fact: '',
+        sort_order: '0',
     };
 }
 

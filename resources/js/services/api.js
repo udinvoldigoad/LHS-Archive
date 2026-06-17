@@ -153,3 +153,26 @@ export function deleteAdminPhoto(token, id) {
         token,
     });
 }
+
+export function createAdminMember(token, data) {
+    return request('/api/admin/members', {
+        method: 'POST',
+        token,
+        data,
+    });
+}
+
+export function updateAdminMember(token, id, data) {
+    return request(`/api/admin/members/${id}`, {
+        method: 'PUT',
+        token,
+        data,
+    });
+}
+
+export function deleteAdminMember(token, id) {
+    return request(`/api/admin/members/${id}`, {
+        method: 'DELETE',
+        token,
+    });
+}

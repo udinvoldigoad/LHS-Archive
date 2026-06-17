@@ -1848,6 +1848,26 @@ img {
     font-size: 14px;
 }
 
+.admin-member-nickname,
+.admin-member-fun-fact {
+    display: block;
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.admin-member-nickname {
+    margin-top: 4px;
+    color: rgba(208, 188, 255, 0.92);
+}
+
+.admin-member-fun-fact {
+    margin-top: -8px;
+    margin-bottom: 16px;
+    color: var(--primary-container);
+    line-height: 1.45;
+}
+
 .admin-card-footer {
     display: flex;
     align-items: center;
@@ -2246,6 +2266,17 @@ img {
     margin-bottom: 16px;
     object-fit: cover;
     filter: grayscale(0.68) contrast(1.08);
+}
+
+.admin-member-empty-photo {
+    display: grid;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    margin-bottom: 16px;
+    place-items: center;
+    border: 1px dashed rgba(168, 240, 74, 0.4);
+    background: rgba(168, 240, 74, 0.08);
+    color: var(--primary-container);
 }
 
 .admin-member-admin-card > span {
