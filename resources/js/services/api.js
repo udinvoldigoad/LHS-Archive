@@ -84,3 +84,26 @@ export function logoutAdmin(token) {
 export function fetchAdminDashboard(token) {
     return request('/api/admin/dashboard', { token });
 }
+
+export function createAdminLink(token, data) {
+    return request('/api/admin/links', {
+        method: 'POST',
+        token,
+        data,
+    });
+}
+
+export function updateAdminLink(token, id, data) {
+    return request(`/api/admin/links/${id}`, {
+        method: 'PUT',
+        token,
+        data,
+    });
+}
+
+export function deleteAdminLink(token, id) {
+    return request(`/api/admin/links/${id}`, {
+        method: 'DELETE',
+        token,
+    });
+}

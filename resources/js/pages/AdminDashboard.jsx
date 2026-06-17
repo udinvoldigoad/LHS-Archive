@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     Bell,
     Camera,
@@ -29,7 +29,12 @@ import {
     moments as fallbackMoments,
     siteSettings as fallbackSiteSettings,
 } from '../data/archiveData.js';
-import { fetchAdminDashboard } from '../services/api.js';
+import {
+    createAdminLink,
+    deleteAdminLink,
+    fetchAdminDashboard,
+    updateAdminLink,
+} from '../services/api.js';
 
 const adminPanels = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -49,33 +54,26 @@ export default function AdminDashboard({ token, onLogout }) {
     const [status, setStatus] = useState('loading');
     const activeMeta = adminPanels.find((panel) => panel.id === activePanel) ?? adminPanels[0];
 
-    useEffect(() => {
-        let isMounted = true;
+    const loadDashboard = useCallback(async () => {
+        setStatus((current) => (current === 'ready' ? 'refreshing' : 'loading'));
 
-        fetchAdminDashboard(token)
-            .then((data) => {
-                if (!isMounted) {
-                    return;
-                }
+        try {
+            const data = await fetchAdminDashboard(token);
+            setDashboard(data);
+            setStatus('ready');
+        } catch (error) {
+            if (error.status === 401) {
+                onLogout?.();
+                return;
+            }
 
-                setDashboard(data);
-                setStatus('ready');
-            })
-            .catch((error) => {
-                if (error.status === 401) {
-                    onLogout?.();
-                    return;
-                }
-
-                if (isMounted) {
-                    setStatus('error');
-                }
-            });
-
-        return () => {
-            isMounted = false;
-        };
+            setStatus('error');
+        }
     }, [onLogout, token]);
+
+    useEffect(() => {
+        loadDashboard();
+    }, [loadDashboard]);
 
     const adminData = useMemo(() => mapAdminDashboard(dashboard), [dashboard]);
     const totals = adminData.stats;
@@ -92,6 +90,7 @@ export default function AdminDashboard({ token, onLogout }) {
             <main className="admin-dashboard-main">
                 <AdminTopbar title={activeMeta.label} />
                 {status === 'loading' ? <p className="admin-api-status">Loading archive database...</p> : null}
+                {status === 'refreshing' ? <p className="admin-api-status">Refreshing archive database...</p> : null}
                 {status === 'error' ? (
                     <p className="admin-api-status admin-api-status-error">
                         API dashboard belum bisa diambil. Menampilkan fallback sementara.
@@ -101,7 +100,14 @@ export default function AdminDashboard({ token, onLogout }) {
                 {activePanel === 'dashboard' ? (
                     <OverviewPanel totals={totals} onSelectPanel={setActivePanel} />
                 ) : null}
-                {activePanel === 'links' ? <LinksPanel links={adminData.links} /> : null}
+                {activePanel === 'links' ? (
+                    <LinksPanel
+                        categories={adminData.categories}
+                        links={adminData.links}
+                        onChanged={loadDashboard}
+                        token={token}
+                    />
+                ) : null}
                 {activePanel === 'moments' ? <MomentsPanel moments={adminData.moments} /> : null}
                 {activePanel === 'video' ? <VideoPanel bestMoment={adminData.bestMoment} /> : null}
                 {activePanel === 'members' ? <MembersPanel members={adminData.members} /> : null}
@@ -170,7 +176,7 @@ function AdminTopbar({ title }) {
     );
 }
 
-function PanelHeader({ title, description, actionLabel, actionIcon: ActionIcon = Plus }) {
+function PanelHeader({ title, description, actionLabel, actionIcon: ActionIcon = Plus, onAction }) {
     return (
         <div className="admin-panel-header">
             <div>
@@ -178,7 +184,7 @@ function PanelHeader({ title, description, actionLabel, actionIcon: ActionIcon =
                 <p>{description}</p>
             </div>
             {actionLabel ? (
-                <button className="admin-action-button" type="button">
+                <button className="admin-action-button" type="button" onClick={onAction}>
                     <ActionIcon size={18} aria-hidden="true" />
                     {actionLabel}
                 </button>
@@ -301,7 +307,102 @@ function OverviewPanel({ totals, onSelectPanel }) {
     );
 }
 
-function LinksPanel({ links }) {
+function LinksPanel({ categories, links, onChanged, token }) {
+    const [editingLink, setEditingLink] = useState(null);
+    const [form, setForm] = useState(createEmptyLinkForm(categories));
+    const [formStatus, setFormStatus] = useState('idle');
+    const [formError, setFormError] = useState('');
+    const [panelError, setPanelError] = useState('');
+    const isEditing = Boolean(editingLink);
+
+    function openCreateForm() {
+        setEditingLink(null);
+        setForm(createEmptyLinkForm(categories));
+        setFormStatus('editing');
+        setFormError('');
+        setPanelError('');
+    }
+
+    function openEditForm(link) {
+        setEditingLink(link);
+        setForm({
+            category_id: link.categoryId ? String(link.categoryId) : '',
+            title: link.title ?? '',
+            description: link.description ?? '',
+            url: link.url ?? '',
+            thumbnail_url: link.thumbnailUrl ?? '',
+            is_featured: Boolean(link.isFeatured),
+            sort_order: String(link.sortOrder ?? 0),
+        });
+        setFormStatus('editing');
+        setFormError('');
+        setPanelError('');
+    }
+
+    function closeForm() {
+        setEditingLink(null);
+        setForm(createEmptyLinkForm(categories));
+        setFormStatus('idle');
+        setFormError('');
+    }
+
+    function updateForm(event) {
+        const { checked, name, type, value } = event.target;
+
+        setForm((current) => ({
+            ...current,
+            [name]: type === 'checkbox' ? checked : value,
+        }));
+    }
+
+    async function submitForm(event) {
+        event.preventDefault();
+        setFormStatus('saving');
+        setFormError('');
+        setPanelError('');
+
+        const payload = {
+            category_id: form.category_id ? Number(form.category_id) : null,
+            title: form.title.trim(),
+            description: form.description.trim() || null,
+            url: form.url.trim(),
+            thumbnail_url: form.thumbnail_url.trim() || null,
+            is_featured: Boolean(form.is_featured),
+            sort_order: Number(form.sort_order || 0),
+        };
+
+        try {
+            if (isEditing) {
+                await updateAdminLink(token, editingLink.id, payload);
+            } else {
+                await createAdminLink(token, payload);
+            }
+
+            await onChanged?.();
+            closeForm();
+        } catch (error) {
+            setFormStatus('editing');
+            setFormError(resolveFormError(error));
+        }
+    }
+
+    async function deleteLink(link) {
+        const confirmed = window.confirm(`Hapus link "${link.title}" dari archive?`);
+
+        if (!confirmed) {
+            return;
+        }
+
+        setPanelError('');
+
+        try {
+            await deleteAdminLink(token, link.id);
+            await onChanged?.();
+        } catch (error) {
+            setPanelError(resolveFormError(error));
+        }
+    }
+
     return (
         <section className="admin-panel">
             <PanelHeader
@@ -309,7 +410,108 @@ function LinksPanel({ links }) {
                 description="Preview link seperti Linktree yang naik kelas dan punya bukti visual."
                 actionLabel="Add New Link"
                 actionIcon={Plus}
+                onAction={openCreateForm}
             />
+
+            {formStatus !== 'idle' ? (
+                <form className="admin-link-form" onSubmit={submitForm}>
+                    <div className="admin-link-form-heading">
+                        <div>
+                            <p className="archive-kicker">{isEditing ? 'Edit Link' : 'New Link'}</p>
+                            <h3>{isEditing ? editingLink.title : 'Tambah Link Archive'}</h3>
+                        </div>
+                        <button type="button" onClick={closeForm}>
+                            Cancel
+                        </button>
+                    </div>
+
+                    <div className="admin-link-form-grid">
+                        <label>
+                            Title
+                            <input
+                                name="title"
+                                type="text"
+                                value={form.title}
+                                onChange={updateForm}
+                                placeholder="Google Drive Folder"
+                                required
+                            />
+                        </label>
+                        <label>
+                            Category
+                            <select name="category_id" value={form.category_id} onChange={updateForm}>
+                                <option value="">No category</option>
+                                {categories.map((category) => (
+                                    <option key={category.id} value={category.id}>
+                                        {category.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                        <label>
+                            URL
+                            <input
+                                name="url"
+                                type="url"
+                                value={form.url}
+                                onChange={updateForm}
+                                placeholder="https://example.com"
+                                required
+                            />
+                        </label>
+                        <label>
+                            Thumbnail URL
+                            <input
+                                name="thumbnail_url"
+                                type="url"
+                                value={form.thumbnail_url}
+                                onChange={updateForm}
+                                placeholder="https://images.example.com/photo.jpg"
+                            />
+                        </label>
+                        <label className="admin-link-form-wide">
+                            Description
+                            <textarea
+                                name="description"
+                                value={form.description}
+                                onChange={updateForm}
+                                placeholder="Keterangan singkat link archive"
+                                rows="3"
+                            />
+                        </label>
+                        <label>
+                            Sort Order
+                            <input
+                                name="sort_order"
+                                type="number"
+                                min="0"
+                                value={form.sort_order}
+                                onChange={updateForm}
+                            />
+                        </label>
+                        <label className="admin-checkbox-field">
+                            <input
+                                name="is_featured"
+                                type="checkbox"
+                                checked={form.is_featured}
+                                onChange={updateForm}
+                            />
+                            Featured link
+                        </label>
+                    </div>
+
+                    {formError ? <p className="admin-form-error">{formError}</p> : null}
+
+                    <div className="admin-link-form-actions">
+                        <button className="admin-action-button" type="submit" disabled={formStatus === 'saving'}>
+                            <Save size={18} aria-hidden="true" />
+                            {formStatus === 'saving' ? 'Saving...' : isEditing ? 'Save Link' : 'Create Link'}
+                        </button>
+                    </div>
+                </form>
+            ) : null}
+
+            {panelError ? <p className="admin-form-error">{panelError}</p> : null}
 
             <div className="admin-link-grid">
                 {links.map((link, index) => (
@@ -326,7 +528,7 @@ function LinksPanel({ links }) {
                         <p>{link.description}</p>
                         <div className="admin-card-footer">
                             <span>Added: Jun {12 + index}, 2026</span>
-                            <AdminCardActions />
+                            <AdminCardActions onDelete={() => deleteLink(link)} onEdit={() => openEditForm(link)} />
                         </div>
                     </article>
                 ))}
@@ -542,6 +744,7 @@ function mapAdminDashboard(dashboard) {
                 members: fallbackMembers.length,
                 messages: fallbackMessages.length,
             },
+            categories: [],
             links: fallbackArchiveLinks,
             moments: fallbackMoments.map((moment, index) => ({
                 ...moment,
@@ -621,6 +824,11 @@ function mapAdminDashboard(dashboard) {
             members: dashboard.stats?.members ?? mappedMembers.length,
             messages: dashboard.stats?.messages ?? mappedMessages.length,
         },
+        categories: (dashboard.categories ?? []).map((category) => ({
+            id: category.id,
+            name: category.name,
+            slug: category.slug,
+        })),
         links: mappedLinks.length ? mappedLinks : fallbackArchiveLinks,
         moments: mappedMoments.length ? mappedMoments : fallbackMoments,
         members: mappedMembers.length ? mappedMembers : fallbackMembers,
@@ -643,13 +851,33 @@ function mapAdminDashboard(dashboard) {
     };
 }
 
-function AdminCardActions() {
+function createEmptyLinkForm(categories) {
+    return {
+        category_id: categories[0]?.id ? String(categories[0].id) : '',
+        title: '',
+        description: '',
+        url: '',
+        thumbnail_url: '',
+        is_featured: false,
+        sort_order: '0',
+    };
+}
+
+function resolveFormError(error) {
+    if (error.payload?.errors) {
+        return Object.values(error.payload.errors).flat().join(' ');
+    }
+
+    return error.message || 'Action failed. Cek input atau koneksi API.';
+}
+
+function AdminCardActions({ onDelete, onEdit }) {
     return (
         <div className="admin-card-actions">
-            <button type="button" title="Edit">
+            <button type="button" title="Edit" onClick={onEdit}>
                 <Edit3 size={18} aria-hidden="true" />
             </button>
-            <button type="button" title="Delete">
+            <button type="button" title="Delete" onClick={onDelete}>
                 <Trash2 size={18} aria-hidden="true" />
             </button>
         </div>
