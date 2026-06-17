@@ -42,13 +42,14 @@ class AdminAuthTest extends TestCase
         $token = $response->json('token');
 
         $this->assertNotEmpty($token);
-        $this->assertTrue((bool) Cache::get('admin-token:'.$token));
+        $this->assertTrue((bool) Cache::get('admin-token:'.hash('sha256', $token)));
+        $this->assertNull(Cache::get('admin-token:'.$token));
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->postJson('/api/admin/logout')
             ->assertOk();
 
-        $this->assertNull(Cache::get('admin-token:'.$token));
+        $this->assertNull(Cache::get('admin-token:'.hash('sha256', $token)));
     }
 
     public function test_admin_login_accepts_hashed_password(): void
@@ -63,5 +64,20 @@ class AdminAuthTest extends TestCase
             ->assertOk()
             ->assertJsonPath('expires_in_minutes', 15)
             ->assertJsonStructure(['token']);
+    }
+
+    public function test_admin_plain_password_is_not_accepted_in_production_by_default(): void
+    {
+        $this->app->detectEnvironment(fn () => 'production');
+
+        config([
+            'archive.admin.password' => 'secret',
+            'archive.admin.password_hash' => '',
+            'archive.admin.allow_plain_password' => false,
+        ]);
+
+        $this->postJson('/api/admin/login', ['password' => 'secret'])
+            ->assertStatus(503)
+            ->assertJsonPath('message', 'Admin password is not configured');
     }
 }

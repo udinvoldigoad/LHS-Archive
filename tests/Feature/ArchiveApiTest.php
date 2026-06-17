@@ -59,6 +59,18 @@ class ArchiveApiTest extends TestCase
             ->assertJsonCount(1);
     }
 
+    public function test_public_message_honeypot_blocks_bot_submissions(): void
+    {
+        $this->postJson('/api/messages', [
+            'name' => 'Bot',
+            'message' => 'Spam yang pura-pura nostalgia.',
+            'website' => 'https://spam.example',
+        ])
+            ->assertUnprocessable();
+
+        $this->assertDatabaseCount('messages', 0);
+    }
+
     public function test_admin_can_create_link_with_a_typed_category(): void
     {
         $this->withAdminToken()
@@ -149,37 +161,10 @@ class ArchiveApiTest extends TestCase
         Storage::disk('public')->assertMissing('archive/images/moment.jpg');
     }
 
-    public function test_admin_can_create_update_and_delete_categories(): void
-    {
-        $response = $this->withAdminToken()
-            ->postJson('/api/admin/categories', [
-                'name' => 'Dokumentasi',
-                'slug' => 'dokumentasi',
-            ])
-            ->assertCreated()
-            ->assertJsonPath('slug', 'dokumentasi');
-
-        $categoryId = $response->json('id');
-
-        $this->withAdminToken()
-            ->putJson('/api/admin/categories/'.$categoryId, [
-                'name' => 'Dokumentasi Baru',
-                'slug' => 'dokumentasi-baru',
-            ])
-            ->assertOk()
-            ->assertJsonPath('name', 'Dokumentasi Baru');
-
-        $this->withAdminToken()
-            ->deleteJson('/api/admin/categories/'.$categoryId)
-            ->assertOk();
-
-        $this->assertDatabaseMissing('categories', ['id' => $categoryId]);
-    }
-
     private function withAdminToken(): self
     {
         $token = 'test-admin-token';
-        Cache::put('admin-token:'.$token, true, now()->addMinutes(5));
+        Cache::put('admin-token:'.hash('sha256', $token), true, now()->addMinutes(5));
 
         return $this->withHeader('Authorization', 'Bearer '.$token);
     }

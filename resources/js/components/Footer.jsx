@@ -1,6 +1,8 @@
 import { cleanHomeHash, rememberSectionTarget, scrollToSection } from '../utils/sectionNavigation.js';
 
 export default function Footer() {
+    const repositoryUrl = 'https://github.com/udinvoldigoad/LHS-Archive';
+
     function handleSectionClick(event, id) {
         if (window.location.pathname !== '/') {
             rememberSectionTarget(id);
@@ -16,13 +18,15 @@ export default function Footer() {
         <footer className="site-footer">
             <p>Copyright LHS Archive / Absurdly Serious Nostalgia</p>
             <nav aria-label="Footer links">
-                <a href="/#messages" onClick={(event) => handleSectionClick(event, 'messages')}>
+                <a href="https://www.instagram.com/lhs_official99" target="_blank" rel="noreferrer">
                     Contact
                 </a>
-                <a href="/#archive" onClick={(event) => handleSectionClick(event, 'archive')}>
+                <a href={repositoryUrl} target="_blank" rel="noreferrer">
                     Source
                 </a>
-                <a href="/admin">Admin</a>
+                <a href="/#archive" onClick={(event) => handleSectionClick(event, 'archive')}>
+                    Back to Top
+                </a>
             </nav>
         </footer>
     );

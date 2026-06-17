@@ -149,29 +149,6 @@ export function uploadAdminMedia(token, file, kind, onProgress) {
     });
 }
 
-export function createAdminCategory(token, data) {
-    return request('/api/admin/categories', {
-        method: 'POST',
-        token,
-        data,
-    });
-}
-
-export function updateAdminCategory(token, id, data) {
-    return request(`/api/admin/categories/${id}`, {
-        method: 'PUT',
-        token,
-        data,
-    });
-}
-
-export function deleteAdminCategory(token, id) {
-    return request(`/api/admin/categories/${id}`, {
-        method: 'DELETE',
-        token,
-    });
-}
-
 export function createAdminLink(token, data) {
     return request('/api/admin/links', {
         method: 'POST',
@@ -261,14 +238,6 @@ export function deleteAdminMember(token, id) {
     return request(`/api/admin/members/${id}`, {
         method: 'DELETE',
         token,
-    });
-}
-
-export function updateAdminMessageVisibility(token, id, isVisible) {
-    return request(`/api/admin/messages/${id}/visibility`, {
-        method: 'PUT',
-        token,
-        data: { is_visible: isVisible },
     });
 }
 

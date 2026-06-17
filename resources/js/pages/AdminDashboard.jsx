@@ -1628,7 +1628,7 @@ function createVideoSettingsForm(bestMoment) {
 
 function createMusicSettingsForm(siteSettings) {
     return {
-        background_music_url: siteSettings.music?.url ?? '',
+        background_music_url: persistedMusicUrl(siteSettings),
     };
 }
 
@@ -1639,9 +1639,15 @@ function createSettingsPayload(siteSettings, bestMoment, overrides = {}) {
         best_moment_title: bestMoment.title ?? null,
         best_moment_description: bestMoment.description ?? null,
         best_moment_video_url: bestMoment.videoUrl || null,
-        background_music_url: siteSettings.music?.url || null,
+        background_music_url: persistedMusicUrl(siteSettings) || null,
         ...overrides,
     };
+}
+
+function persistedMusicUrl(siteSettings) {
+    const url = siteSettings.music?.url ?? '';
+
+    return url === fallbackSiteSettings.music.url ? '' : url;
 }
 
 function matchesSearch(query, ...values) {

@@ -139,7 +139,7 @@ export default function AdminLogin({ onLogin }) {
 
                     <p className="admin-login-note">
                         <Terminal size={16} aria-hidden="true" />
-                        Password dibaca dari <strong>ADMIN_PASSWORD</strong> di backend.
+                        Production sebaiknya pakai <strong>ADMIN_PASSWORD_HASH</strong> di backend.
                     </p>
                 </section>
 
@@ -147,7 +147,7 @@ export default function AdminLogin({ onLogin }) {
                     <p className="archive-kicker">Next Admin Concept</p>
                     <h2>Belum auth beneran, tapi tempatnya sudah disiapkan.</h2>
                     <ul>
-                        <li>Password dari env backend.</li>
+                        <li>Password hash dari env backend.</li>
                         <li>Token sederhana untuk akses dashboard.</li>
                         <li>Form CRUD untuk link, foto, member, pesan, dan best moment.</li>
                     </ul>

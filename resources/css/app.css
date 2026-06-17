@@ -977,6 +977,14 @@ img {
     text-transform: uppercase;
 }
 
+.message-honeypot {
+    position: absolute;
+    left: -100vw;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
+
 .message-form input,
 .message-form textarea {
     width: 100%;

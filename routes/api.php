@@ -2,7 +2,6 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AdminAuthController;
-use App\Http\Controllers\Api\Admin\CategoryController;
 use App\Http\Controllers\Api\Admin\DashboardController;
 use App\Http\Controllers\Api\Admin\LinkController;
 use App\Http\Controllers\Api\Admin\MemberController;
@@ -31,12 +30,10 @@ Route::middleware(['simple.admin', 'throttle:120,1'])->prefix('admin')->group(fu
     Route::post('/uploads', [UploadController::class, 'store']);
     Route::get('/settings', [SettingController::class, 'show']);
     Route::put('/settings', [SettingController::class, 'update']);
-    Route::apiResource('categories', CategoryController::class)->except(['show']);
     Route::apiResource('links', LinkController::class);
     Route::apiResource('moments', MomentController::class);
     Route::apiResource('photos', PhotoController::class);
     Route::apiResource('members', MemberController::class);
     Route::get('/messages', [AdminMessageController::class, 'index']);
-    Route::put('/messages/{message}/visibility', [AdminMessageController::class, 'updateVisibility']);
     Route::delete('/messages/{message}', [AdminMessageController::class, 'destroy']);
 });

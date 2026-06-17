@@ -25,9 +25,10 @@ class AdminAuthController extends Controller
         }
 
         $token = Str::random(64);
+        $tokenHash = hash('sha256', $token);
         $ttlMinutes = max(1, (int) config('archive.admin.token_ttl_minutes', 480));
 
-        Cache::put('admin-token:'.$token, true, now()->addMinutes($ttlMinutes));
+        Cache::put('admin-token:'.$tokenHash, true, now()->addMinutes($ttlMinutes));
 
         return response()->json([
             'message' => 'Logged in',
@@ -41,7 +42,7 @@ class AdminAuthController extends Controller
         $token = $request->bearerToken();
 
         if ($token) {
-            Cache::forget('admin-token:'.$token);
+            Cache::forget('admin-token:'.hash('sha256', $token));
         }
 
         return response()->json(['message' => 'Logged out']);
@@ -49,7 +50,7 @@ class AdminAuthController extends Controller
 
     private function adminPasswordIsConfigured(): bool
     {
-        return $this->configuredHash() !== '' || $this->configuredPlainPassword() !== '';
+        return $this->configuredHash() !== '' || ($this->plainPasswordIsAllowed() && $this->configuredPlainPassword() !== '');
     }
 
     private function passwordIsValid(string $password): bool
@@ -60,7 +61,7 @@ class AdminAuthController extends Controller
             return Hash::check($password, $hash);
         }
 
-        return hash_equals($this->configuredPlainPassword(), $password);
+        return $this->plainPasswordIsAllowed() && hash_equals($this->configuredPlainPassword(), $password);
     }
 
     private function configuredHash(): string
@@ -71,5 +72,10 @@ class AdminAuthController extends Controller
     private function configuredPlainPassword(): string
     {
         return (string) config('archive.admin.password', '');
+    }
+
+    private function plainPasswordIsAllowed(): bool
+    {
+        return ! app()->isProduction() || (bool) config('archive.admin.allow_plain_password', false);
     }
 }

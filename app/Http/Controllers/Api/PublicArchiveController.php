@@ -68,7 +68,10 @@ class PublicArchiveController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:80'],
             'message' => ['required', 'string', 'max:500'],
+            'website' => ['nullable', 'prohibited'],
         ]);
+
+        unset($validated['website']);
 
         $message = Message::create($validated + ['is_visible' => true]);
 
@@ -84,7 +87,7 @@ class PublicArchiveController extends Controller
             'tagline' => $settings?->tagline ?? 'Tempat kecil buat nyimpen semua hal yang pernah rame bareng.',
             'adminPasswordConcept' => [
                 'route' => '/admin',
-                'envKey' => 'ADMIN_PASSWORD',
+                'envKey' => 'ADMIN_PASSWORD_HASH',
                 'status' => 'Backend token auth enabled',
             ],
             'music' => [
@@ -177,6 +180,7 @@ class PublicArchiveController extends Controller
     {
         return Message::where('is_visible', true)
             ->latest()
+            ->limit(60)
             ->get()
             ->map(fn (Message $message) => [
                 'id' => $message->id,

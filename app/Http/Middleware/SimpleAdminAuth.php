@@ -18,7 +18,7 @@ class SimpleAdminAuth
     {
         $token = $request->bearerToken();
 
-        if (! $token || ! Cache::get('admin-token:'.$token)) {
+        if (! $token || ! Cache::get('admin-token:'.hash('sha256', $token))) {
             return response()->json(['message' => 'Unauthenticated admin'], 401);
         }
 

@@ -3,7 +3,7 @@ export const siteSettings = {
     tagline: 'Tempat kecil buat nyimpen semua hal yang pernah rame bareng.',
     adminPasswordConcept: {
         route: '/admin',
-        envKey: 'ADMIN_PASSWORD',
+        envKey: 'ADMIN_PASSWORD_HASH',
         status: 'Prepared for a later simple password gate',
     },
     music: {

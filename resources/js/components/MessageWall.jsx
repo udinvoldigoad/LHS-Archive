@@ -7,6 +7,7 @@ export default function MessageWall({ initialMessages, onSubmitMessage }) {
     const [notes, setNotes] = useState(initialMessages);
     const [name, setName] = useState('');
     const [message, setMessage] = useState('');
+    const [website, setWebsite] = useState('');
     const [status, setStatus] = useState('idle');
     const [isMessageFocused, setIsMessageFocused] = useState(false);
 
@@ -20,7 +21,7 @@ export default function MessageWall({ initialMessages, onSubmitMessage }) {
         const trimmedName = name.trim();
         const trimmedMessage = message.trim();
 
-        if (!trimmedName || !trimmedMessage) {
+        if (!trimmedName || !trimmedMessage || website) {
             return;
         }
 
@@ -28,7 +29,7 @@ export default function MessageWall({ initialMessages, onSubmitMessage }) {
 
         try {
             const savedMessage = onSubmitMessage
-                ? await onSubmitMessage({ name: trimmedName, message: trimmedMessage })
+                ? await onSubmitMessage({ name: trimmedName, message: trimmedMessage, website })
                 : { name: trimmedName, message: trimmedMessage };
 
             setNotes((currentNotes) => [
@@ -64,6 +65,17 @@ export default function MessageWall({ initialMessages, onSubmitMessage }) {
                         onChange={(event) => setName(event.target.value)}
                         placeholder="Nama arsiparis dadakan"
                     />
+                    <label className="message-honeypot" htmlFor="guest-website">
+                        Website
+                        <input
+                            id="guest-website"
+                            name="website"
+                            tabIndex="-1"
+                            autoComplete="off"
+                            value={website}
+                            onChange={(event) => setWebsite(event.target.value)}
+                        />
+                    </label>
                     <label htmlFor="guest-message">Pesan</label>
                     <textarea
                         id="guest-message"

@@ -35,11 +35,11 @@ class ArchiveMedia
                 return;
             }
 
-            if (filter_var($value, FILTER_VALIDATE_URL) || self::pathFromUrl((string) $value)) {
+            if (self::pathFromUrl((string) $value) || self::externalUrlIsAllowed((string) $value)) {
                 return;
             }
 
-            $fail('The '.$attribute.' field must be a valid URL or uploaded archive file.');
+            $fail('The '.$attribute.' field must be an uploaded archive file.');
         };
     }
 
@@ -120,5 +120,14 @@ class ArchiveMedia
         $path = ltrim($path, '/');
 
         return str_starts_with($path, 'archive/') ? $path : null;
+    }
+
+    private static function externalUrlIsAllowed(string $url): bool
+    {
+        if (! filter_var($url, FILTER_VALIDATE_URL)) {
+            return false;
+        }
+
+        return (bool) config('archive.media.allow_external_urls', false);
     }
 }
