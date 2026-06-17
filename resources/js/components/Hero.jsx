@@ -15,7 +15,7 @@ export default function Hero({ settings, photos }) {
         <section className="hero-section" id="archive">
             <div className="hero-polaroids" aria-hidden="true">
                 {photos.map((photo, index) => (
-                    <div className={`hero-polaroid hero-polaroid-${index + 1}`} key={photo.src}>
+                    <div className={`hero-polaroid hero-polaroid-${index + 1}`} key={`${photo.src}-${index}`}>
                         <img src={photo.src} alt="" />
                     </div>
                 ))}

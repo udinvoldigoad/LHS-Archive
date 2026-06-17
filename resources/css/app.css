@@ -227,11 +227,12 @@ img {
 
 .hero-section {
     position: relative;
+    isolation: isolate;
     display: grid;
     min-height: calc(100svh - 70px);
+    overflow: hidden;
     place-items: center;
     padding: 96px 24px 64px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
     scroll-margin-top: 88px;
 }
 
@@ -241,14 +242,30 @@ img {
     z-index: 0;
     content: "";
     background:
-        linear-gradient(90deg, rgba(18, 20, 20, 0.7), rgba(18, 20, 20, 0.15), rgba(18, 20, 20, 0.7)),
-        linear-gradient(180deg, rgba(18, 20, 20, 0.1), var(--surface));
+        linear-gradient(90deg, rgba(18, 20, 20, 0.88), rgba(18, 20, 20, 0.42) 42%, rgba(18, 20, 20, 0.82)),
+        linear-gradient(180deg, rgba(18, 20, 20, 0.38), rgba(18, 20, 20, 0.22) 38%, rgba(18, 20, 20, 0.92) 86%, var(--surface)),
+        url("https://yyrnidiqdptvcrqpwlak.supabase.co/storage/v1/object/public/lhs-archive/archive/images/best-moment-thumbnail.jpg");
+    background-position: center;
+    background-size: cover;
+    filter: saturate(0.86) contrast(1.06) brightness(0.78);
+}
+
+.hero-section::after {
+    position: absolute;
+    inset: auto 0 0;
+    z-index: 2;
+    height: 44%;
+    pointer-events: none;
+    content: "";
+    background:
+        linear-gradient(180deg, transparent 0%, rgba(18, 20, 20, 0.64) 52%, var(--surface) 100%),
+        radial-gradient(circle at 50% 100%, rgba(18, 20, 20, 0.92), transparent 58%);
 }
 
 .hero-polaroids {
     position: absolute;
     inset: 0;
-    z-index: 0;
+    z-index: 1;
     overflow: hidden;
     pointer-events: none;
 }
@@ -345,7 +362,7 @@ img {
 
 .hero-content {
     position: relative;
-    z-index: 1;
+    z-index: 3;
     width: min(720px, 100%);
     max-width: 100%;
     text-align: center;
@@ -489,10 +506,24 @@ img {
     transform: rotate(-0.7deg);
 }
 
-.best-moment-frame img {
+.best-moment-frame img,
+.best-moment-video {
     width: 100%;
     aspect-ratio: 16 / 9;
     object-fit: cover;
+}
+
+.best-moment-frame img {
+    filter: grayscale(0.86) contrast(1.2) brightness(0.66);
+}
+
+.best-moment-video {
+    display: block;
+    background: #050606;
+}
+
+.best-moment-preview-video {
+    pointer-events: none;
     filter: grayscale(0.86) contrast(1.2) brightness(0.66);
 }
 
@@ -898,12 +929,6 @@ img {
     text-transform: uppercase;
 }
 
-.member-card p {
-    margin: 8px 0 0;
-    color: var(--on-surface-variant);
-    font-size: 14px;
-}
-
 .member-card blockquote {
     margin: 16px 0 0;
     color: var(--on-surface);
@@ -959,6 +984,7 @@ img {
     border-bottom: 1px solid rgba(255, 255, 255, 0.18);
     border-radius: 0;
     background: transparent;
+    caret-color: var(--primary-container);
     color: var(--on-surface);
     outline: 0;
     transition: border-color 180ms ease;
@@ -980,6 +1006,30 @@ img {
 .message-form .archive-button {
     align-self: flex-start;
     margin-top: 8px;
+}
+
+.message-typing-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: -4px 0 0;
+    color: var(--primary-container);
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.message-typing-status span {
+    width: 2px;
+    height: 16px;
+    background: currentColor;
+    animation: typing-caret 900ms steps(1) infinite;
+}
+
+@keyframes typing-caret {
+    50% {
+        opacity: 0;
+    }
 }
 
 .message-wall {
@@ -1388,13 +1438,6 @@ img {
     margin-bottom: 38px;
 }
 
-.admin-topbar-actions img {
-    border: 1px solid rgba(236, 255, 206, 0.65);
-    border-radius: 8px;
-    object-fit: cover;
-    filter: grayscale(0.62) contrast(1.12);
-}
-
 .admin-profile h2 {
     margin: 0;
     color: var(--primary);
@@ -1549,11 +1592,6 @@ img {
     background: var(--surface-soft);
     color: var(--primary-container);
     transform: translateY(-1px);
-}
-
-.admin-topbar-actions img {
-    width: 46px;
-    height: 46px;
 }
 
 .admin-api-status {
@@ -2063,34 +2101,6 @@ img {
         rgba(37, 38, 42, 0.88);
     box-shadow: 8px 8px 0 rgba(168, 240, 74, 0.12);
     transform: rotate(-0.25deg);
-}
-
-.admin-link-form-heading {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 18px;
-    margin-bottom: 22px;
-}
-
-.admin-link-form-heading h3 {
-    margin: 0;
-    color: var(--primary);
-    font-family: "Space Grotesk", sans-serif;
-    font-size: 22px;
-    line-height: 1.2;
-}
-
-.admin-link-form-heading button {
-    min-height: 34px;
-    padding: 0 12px;
-    border: 1px solid rgba(255, 255, 255, 0.28);
-    border-radius: 4px;
-    background: transparent;
-    color: var(--on-surface-variant);
-    font-family: "Space Grotesk", sans-serif;
-    font-size: 12px;
-    font-weight: 700;
 }
 
 .admin-link-form-grid {
@@ -2642,8 +2652,7 @@ img {
     font-size: 14px;
 }
 
-.admin-member-nickname,
-.admin-member-fun-fact {
+.admin-member-nickname {
     display: block;
     font-family: "Space Grotesk", sans-serif;
     font-size: 12px;
@@ -2653,13 +2662,6 @@ img {
 .admin-member-nickname {
     margin-top: 4px;
     color: rgba(208, 188, 255, 0.92);
-}
-
-.admin-member-fun-fact {
-    margin-top: -8px;
-    margin-bottom: 16px;
-    color: var(--primary-container);
-    line-height: 1.45;
 }
 
 .admin-card-footer {
@@ -2901,32 +2903,6 @@ img {
     border-color: var(--primary-container);
 }
 
-.admin-upload-zone {
-    display: grid;
-    min-height: 168px;
-    place-items: center;
-    padding: 24px;
-    border: 2px dashed rgba(236, 255, 206, 0.7);
-    border-radius: 6px;
-    background: rgba(46, 48, 53, 0.38);
-    color: var(--on-surface-variant);
-    text-align: center;
-}
-
-.admin-upload-zone p {
-    margin: 8px 0 0;
-    color: var(--on-surface);
-}
-
-.admin-upload-zone span {
-    color: var(--primary-container);
-    text-decoration: underline;
-}
-
-.admin-upload-zone small {
-    color: var(--on-surface-variant);
-}
-
 .admin-director-note {
     position: relative;
     max-width: 430px;
@@ -2975,11 +2951,21 @@ img {
     box-shadow: 0 0 22px rgba(168, 240, 74, 0.12);
 }
 
-.admin-video-preview img {
+.admin-video-preview img,
+.admin-video-preview video {
     width: 100%;
     aspect-ratio: 16 / 9;
     object-fit: cover;
+}
+
+.admin-video-preview img {
     filter: grayscale(0.66) contrast(1.14) brightness(0.62);
+}
+
+.admin-video-preview video {
+    display: block;
+    background: #050606;
+    filter: grayscale(0.36) contrast(1.08) brightness(0.76);
 }
 
 .admin-video-preview::after {
@@ -3304,12 +3290,6 @@ img {
     color: var(--on-surface);
 }
 
-.member-modal-role {
-    color: var(--on-surface-variant);
-    font-family: "Space Grotesk", sans-serif;
-    font-weight: 700;
-}
-
 .member-modal blockquote {
     margin: 24px 0;
     padding-left: 18px;
@@ -3542,7 +3522,6 @@ img {
         padding: 0;
     }
 
-    .admin-link-form-heading,
     .admin-link-form-actions {
         align-items: stretch;
         flex-direction: column;
@@ -3878,10 +3857,6 @@ img {
 @media (max-width: 520px) {
     .admin-sidebar-nav button {
         font-size: 13px;
-    }
-
-    .admin-topbar-actions img {
-        display: none;
     }
 
     .admin-topbar h1 {

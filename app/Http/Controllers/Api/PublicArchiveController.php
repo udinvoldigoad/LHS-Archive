@@ -70,7 +70,7 @@ class PublicArchiveController extends Controller
             'message' => ['required', 'string', 'max:500'],
         ]);
 
-        $message = Message::create($validated + ['is_visible' => false]);
+        $message = Message::create($validated + ['is_visible' => true]);
 
         return response()->json($message, 201);
     }
@@ -102,7 +102,7 @@ class PublicArchiveController extends Controller
             'label' => 'Featured',
             'title' => $settings?->best_moment_title ?? 'Malam Keakraban 2023',
             'description' => $settings?->best_moment_description ?? 'Satu video buat membuktikan kalau chaos juga bisa terlihat sinematik.',
-            'thumbnailUrl' => 'https://images.unsplash.com/photo-1519608487953-e999c86e7455?auto=format&fit=crop&w=1400&q=85',
+            'thumbnailUrl' => 'https://yyrnidiqdptvcrqpwlak.supabase.co/storage/v1/object/public/lhs-archive/archive/images/best-moment-thumbnail.jpg',
             'videoUrl' => $settings?->best_moment_video_url ?? '',
         ];
     }
@@ -166,11 +166,9 @@ class PublicArchiveController extends Controller
                 'id' => $member->id,
                 'name' => $member->name,
                 'nickname' => $member->nickname,
-                'role' => $member->role,
                 'quote' => $member->quote,
                 'photoUrl' => $member->photo_url,
                 'instagramUrl' => $member->instagram_url,
-                'funFact' => $member->fun_fact,
                 'sortOrder' => $member->sort_order,
             ]);
     }

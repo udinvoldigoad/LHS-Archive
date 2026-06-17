@@ -7,9 +7,25 @@ use Illuminate\Support\Facades\Storage;
 
 class ArchiveMedia
 {
+    public static function disk(): string
+    {
+        return (string) config('archive.media.disk', 'public');
+    }
+
     public static function url(string $path): string
     {
-        return '/storage/'.ltrim($path, '/');
+        $path = ltrim($path, '/');
+        $publicUrl = trim((string) config('archive.media.public_url', ''));
+
+        if ($publicUrl !== '') {
+            return rtrim($publicUrl, '/').'/'.$path;
+        }
+
+        if (self::disk() === 'public') {
+            return '/storage/'.$path;
+        }
+
+        return Storage::disk(self::disk())->url($path);
     }
 
     public static function rule(): Closure
@@ -35,7 +51,7 @@ class ArchiveMedia
             return;
         }
 
-        Storage::disk('public')->delete($path);
+        Storage::disk(self::disk())->delete($path);
     }
 
     public static function deleteIfChanged(?string $oldUrl, ?string $newUrl): void
@@ -53,7 +69,25 @@ class ArchiveMedia
             return null;
         }
 
-        $path = parse_url($url, PHP_URL_PATH) ?: $url;
+        $url = trim($url);
+        $withoutQuery = strtok($url, '?') ?: $url;
+        $publicUrl = rtrim((string) config('archive.media.public_url', ''), '/');
+
+        if ($publicUrl !== '' && str_starts_with($withoutQuery, $publicUrl.'/')) {
+            return self::managedPath(substr($withoutQuery, strlen($publicUrl) + 1));
+        }
+
+        if (str_starts_with($withoutQuery, 'archive/')) {
+            return self::managedPath($withoutQuery);
+        }
+
+        $path = parse_url($url, PHP_URL_PATH) ?: $withoutQuery;
+
+        $supabasePath = self::supabasePublicPath($path);
+
+        if ($supabasePath) {
+            return $supabasePath;
+        }
 
         if (! str_starts_with($path, '/storage/')) {
             return null;
@@ -61,6 +95,30 @@ class ArchiveMedia
 
         $storagePath = ltrim(substr($path, strlen('/storage/')), '/');
 
-        return str_starts_with($storagePath, 'archive/') ? $storagePath : null;
+        return self::managedPath($storagePath);
+    }
+
+    private static function supabasePublicPath(string $path): ?string
+    {
+        $bucket = trim((string) config('archive.media.bucket', ''));
+
+        if ($bucket === '') {
+            return null;
+        }
+
+        $prefix = '/storage/v1/object/public/'.$bucket.'/';
+
+        if (! str_starts_with($path, $prefix)) {
+            return null;
+        }
+
+        return self::managedPath(substr($path, strlen($prefix)));
+    }
+
+    private static function managedPath(string $path): ?string
+    {
+        $path = ltrim($path, '/');
+
+        return str_starts_with($path, 'archive/') ? $path : null;
     }
 }

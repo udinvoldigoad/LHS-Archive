@@ -10,7 +10,6 @@ export default function MemberCard({ member, index, onOpen }) {
                 {member.photoUrl ? <img src={member.photoUrl} alt={member.name} /> : <MediaPlaceholder type="member" />}
                 <span className="member-card-role">Archived Human</span>
                 <h3>{member.name}</h3>
-                <p>{member.role}</p>
                 <blockquote>{member.quote}</blockquote>
             </button>
             <a href={member.instagramUrl} target="_blank" rel="noreferrer" title={`${member.name} Instagram placeholder`}>

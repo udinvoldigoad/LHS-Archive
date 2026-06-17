@@ -22,6 +22,12 @@ class ArchiveApiTest extends TestCase
         }
 
         parent::setUp();
+
+        config([
+            'archive.media.disk' => 'public',
+            'archive.media.public_url' => null,
+            'archive.media.bucket' => null,
+        ]);
     }
 
     public function test_public_archive_returns_empty_arrays_when_database_is_empty(): void
@@ -34,23 +40,44 @@ class ArchiveApiTest extends TestCase
             ->assertJsonPath('messages', []);
     }
 
-    public function test_public_messages_are_hidden_until_admin_approves_them(): void
+    public function test_public_messages_are_visible_immediately_after_submit(): void
     {
         $this->postJson('/api/messages', [
             'name' => 'Visitor',
-            'message' => 'Tunggu approve dulu.',
+            'message' => 'Langsung tampil dong.',
         ])
             ->assertCreated()
-            ->assertJsonPath('is_visible', false);
+            ->assertJsonPath('is_visible', true);
 
         $this->assertDatabaseHas('messages', [
             'name' => 'Visitor',
-            'is_visible' => false,
+            'is_visible' => true,
         ]);
 
         $this->getJson('/api/messages')
             ->assertOk()
-            ->assertJsonCount(0);
+            ->assertJsonCount(1);
+    }
+
+    public function test_admin_can_create_link_with_a_typed_category(): void
+    {
+        $this->withAdminToken()
+            ->postJson('/api/admin/links', [
+                'category_name' => 'Dokumentasi Liar',
+                'title' => 'Drive Kenangan',
+                'url' => 'https://example.com/drive',
+                'description' => null,
+                'thumbnail_url' => null,
+                'is_featured' => false,
+                'sort_order' => 0,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('category.name', 'Dokumentasi Liar');
+
+        $this->assertDatabaseHas('categories', [
+            'name' => 'Dokumentasi Liar',
+            'slug' => 'dokumentasi-liar',
+        ]);
     }
 
     public function test_admin_upload_returns_a_relative_storage_url(): void

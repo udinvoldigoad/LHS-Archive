@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     Camera,
-    CheckCircle2,
     Clapperboard,
     Eye,
     FileText,
@@ -11,8 +10,6 @@ import {
     Music,
     Plus,
     Save,
-    Settings,
-    Tags,
     Trash2,
     UsersRound,
     Volume2,
@@ -26,22 +23,18 @@ import {
     siteSettings as fallbackSiteSettings,
 } from '../data/archiveData.js';
 import {
-    createAdminCategory,
     createAdminLink,
     createAdminMember,
     createAdminMoment,
     createAdminPhoto,
-    deleteAdminCategory,
     deleteAdminLink,
     deleteAdminMember,
     deleteAdminMessage,
     deleteAdminMoment,
     deleteAdminPhoto,
     fetchAdminDashboard,
-    updateAdminCategory,
     updateAdminLink,
     updateAdminMember,
-    updateAdminMessageVisibility,
     updateAdminMoment,
     updateAdminPhoto,
     updateAdminSettings,
@@ -115,12 +108,8 @@ export default function AdminDashboard({ token, onLogout }) {
                 {activePanel === 'dashboard' ? (
                     <OverviewPanel totals={totals} onSelectPanel={setActivePanel} />
                 ) : null}
-                {activePanel === 'categories' ? (
-                    <CategoriesPanel categories={adminData.categories} onChanged={loadDashboard} token={token} />
-                ) : null}
                 {activePanel === 'links' ? (
                     <LinksPanel
-                        categories={adminData.categories}
                         links={adminData.links}
                         onChanged={loadDashboard}
                         token={token}
@@ -128,14 +117,6 @@ export default function AdminDashboard({ token, onLogout }) {
                 ) : null}
                 {activePanel === 'moments' ? (
                     <MomentsPanel moments={adminData.moments} onChanged={loadDashboard} token={token} />
-                ) : null}
-                {activePanel === 'settings' ? (
-                    <SettingsPanel
-                        bestMoment={adminData.bestMoment}
-                        onChanged={loadDashboard}
-                        siteSettings={adminData.siteSettings}
-                        token={token}
-                    />
                 ) : null}
                 {activePanel === 'video' ? (
                     <VideoPanel
@@ -169,17 +150,10 @@ function OverviewPanel({ totals, onSelectPanel }) {
         { label: 'Live Links', value: totals.links, detail: 'preview cards ready', icon: Link2 },
         { label: 'Polaroid Moments', value: totals.moments, detail: 'scrapbook entries', icon: Camera },
         { label: 'Archived Humans', value: totals.members, detail: 'member profiles', icon: UsersRound },
-        { label: 'Visitor Notes', value: totals.messages, detail: 'messages pending vibe check', icon: MessageSquareText },
+        { label: 'Visitor Notes', value: totals.messages, detail: 'live public messages', icon: MessageSquareText },
     ];
 
     const quickPanels = [
-        {
-            id: 'categories',
-            title: 'Categories',
-            description: 'Kelola grup link archive.',
-            meta: 'link groups',
-            icon: Tags,
-        },
         {
             id: 'links',
             title: 'Manage Links',
@@ -193,13 +167,6 @@ function OverviewPanel({ totals, onSelectPanel }) {
             description: 'Kurasi foto dan caption yang pantas jadi bukti sejarah.',
             meta: `${totals.moments} moments`,
             icon: Camera,
-        },
-        {
-            id: 'settings',
-            title: 'Site Settings',
-            description: 'Atur judul dan tagline halaman publik.',
-            meta: 'global copy',
-            icon: Settings,
         },
         {
             id: 'video',
@@ -218,7 +185,7 @@ function OverviewPanel({ totals, onSelectPanel }) {
         {
             id: 'messages',
             title: 'Messages',
-            description: 'Moderasi sticky note dari pengunjung.',
+            description: 'Lihat dan hapus sticky note dari pengunjung.',
             meta: `${totals.messages} notes`,
             icon: MessageSquareText,
         },
@@ -292,196 +259,9 @@ function OverviewPanel({ totals, onSelectPanel }) {
     );
 }
 
-function CategoriesPanel({ categories, onChanged, token }) {
-    const [editingCategory, setEditingCategory] = useState(null);
-    const [form, setForm] = useState(createEmptyCategoryForm());
-    const [formStatus, setFormStatus] = useState('idle');
-    const [panelError, setPanelError] = useState('');
-    const [searchQuery, setSearchQuery] = useState('');
-    const [deleteTarget, setDeleteTarget] = useState(null);
-    const [deleteStatus, setDeleteStatus] = useState('idle');
-    const isEditing = Boolean(editingCategory);
-    const filteredCategories = categories.filter((category) => matchesSearch(searchQuery, category.name, category.slug));
-
-    function openCreateForm() {
-        setEditingCategory(null);
-        setForm(createEmptyCategoryForm());
-        setFormStatus('editing');
-        setPanelError('');
-    }
-
-    function openEditForm(category) {
-        setEditingCategory(category);
-        setForm({
-            name: category.name ?? '',
-            slug: category.slug ?? '',
-        });
-        setFormStatus('editing');
-        setPanelError('');
-    }
-
-    function closeForm() {
-        setEditingCategory(null);
-        setForm(createEmptyCategoryForm());
-        setFormStatus('idle');
-        setPanelError('');
-    }
-
-    function updateForm(event) {
-        const { name, value } = event.target;
-
-        setForm((current) => ({
-            ...current,
-            [name]: value,
-        }));
-    }
-
-    async function submitForm(event) {
-        event.preventDefault();
-        setFormStatus('saving');
-        setPanelError('');
-
-        const payload = {
-            name: form.name.trim(),
-            slug: form.slug.trim() || null,
-        };
-
-        try {
-            if (isEditing) {
-                await updateAdminCategory(token, editingCategory.id, payload);
-            } else {
-                await createAdminCategory(token, payload);
-            }
-
-            await onChanged?.();
-            closeForm();
-        } catch (error) {
-            setFormStatus('editing');
-            setPanelError(resolveFormError(error));
-        }
-    }
-
-    async function confirmDeleteCategory() {
-        if (!deleteTarget) {
-            return;
-        }
-
-        setDeleteStatus('deleting');
-        setPanelError('');
-
-        try {
-            await deleteAdminCategory(token, deleteTarget.id);
-            await onChanged?.();
-            setDeleteTarget(null);
-        } catch (error) {
-            setPanelError(resolveFormError(error));
-        } finally {
-            setDeleteStatus('idle');
-        }
-    }
-
-    return (
-        <section className="admin-panel">
-            <PanelHeader
-                title="Manage Categories"
-                description="Rapikan grup link archive sebelum semuanya jadi laci campur aduk."
-                actionLabel="Add Category"
-                actionIcon={Tags}
-                onAction={openCreateForm}
-            />
-
-            {panelError && formStatus === 'idle' ? <p className="admin-form-error">{panelError}</p> : null}
-
-            <AdminListToolbar
-                count={filteredCategories.length}
-                countLabel={filteredCategories.length === 1 ? 'category' : 'categories'}
-                placeholder="Search category..."
-                searchValue={searchQuery}
-                onSearchChange={setSearchQuery}
-            />
-
-            <AdminModal
-                eyebrow={isEditing ? 'Edit Category' : 'New Category'}
-                isOpen={formStatus !== 'idle'}
-                onClose={closeForm}
-                title={isEditing ? editingCategory.name : 'Tambah Category'}
-            >
-                <form className="admin-link-form" onSubmit={submitForm}>
-                    <div className="admin-link-form-grid">
-                        <label>
-                            Name
-                            <input
-                                name="name"
-                                type="text"
-                                value={form.name}
-                                onChange={updateForm}
-                                placeholder="Dokumentasi"
-                                required
-                            />
-                        </label>
-                        <label>
-                            Slug
-                            <input
-                                name="slug"
-                                type="text"
-                                value={form.slug}
-                                onChange={updateForm}
-                                placeholder="dokumentasi"
-                            />
-                        </label>
-                    </div>
-
-                    {panelError ? <p className="admin-form-error">{panelError}</p> : null}
-
-                    <div className="admin-link-form-actions">
-                        <button className="admin-action-button" type="submit" disabled={formStatus === 'saving'}>
-                            <Save size={18} aria-hidden="true" />
-                            {formStatus === 'saving' ? 'Saving...' : isEditing ? 'Save Category' : 'Create Category'}
-                        </button>
-                    </div>
-                </form>
-            </AdminModal>
-
-            <AdminConfirmModal
-                body={`Link yang memakai category "${deleteTarget?.name ?? ''}" akan jadi tanpa category.`}
-                confirmLabel="Delete Category"
-                isOpen={Boolean(deleteTarget)}
-                isWorking={deleteStatus === 'deleting'}
-                title={`Hapus ${deleteTarget?.name ?? 'category'}?`}
-                onClose={() => setDeleteTarget(null)}
-                onConfirm={confirmDeleteCategory}
-            />
-
-            {filteredCategories.length ? (
-                <div className="admin-category-grid">
-                    {filteredCategories.map((category, index) => (
-                        <article
-                            className="admin-category-card"
-                            key={category.id ?? category.slug}
-                            style={{ '--tilt': index % 2 === 0 ? '-0.4deg' : '0.5deg' }}
-                        >
-                            <span>Category</span>
-                            <h3>{category.name}</h3>
-                            <p>/{category.slug}</p>
-                            <AdminCardActions
-                                onDelete={() => setDeleteTarget(category)}
-                                onEdit={() => openEditForm(category)}
-                            />
-                        </article>
-                    ))}
-                </div>
-            ) : (
-                <AdminEmptyState icon={Tags} title="No categories yet">
-                    {searchQuery ? 'Tidak ada category yang cocok dengan pencarian itu.' : 'Tambah category pertama supaya link archive lebih gampang dibaca.'}
-                </AdminEmptyState>
-            )}
-        </section>
-    );
-}
-
-function LinksPanel({ categories, links, onChanged, token }) {
+function LinksPanel({ links, onChanged, token }) {
     const [editingLink, setEditingLink] = useState(null);
-    const [form, setForm] = useState(createEmptyLinkForm(categories));
+    const [form, setForm] = useState(createEmptyLinkForm());
     const [formStatus, setFormStatus] = useState('idle');
     const [formError, setFormError] = useState('');
     const [panelError, setPanelError] = useState('');
@@ -490,15 +270,19 @@ function LinksPanel({ categories, links, onChanged, token }) {
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [deleteStatus, setDeleteStatus] = useState('idle');
     const isEditing = Boolean(editingLink);
+    const categoryOptions = useMemo(
+        () => Array.from(new Set(links.map((link) => link.category).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
+        [links],
+    );
     const filteredLinks = links.filter((link) => {
-        const categoryMatches = !categoryFilter || String(link.categoryId ?? '') === categoryFilter;
+        const categoryMatches = !categoryFilter || link.category === categoryFilter;
 
         return categoryMatches && matchesSearch(searchQuery, link.title, link.description, link.url, link.category);
     });
 
     function openCreateForm() {
         setEditingLink(null);
-        setForm(createEmptyLinkForm(categories));
+        setForm(createEmptyLinkForm());
         setFormStatus('editing');
         setFormError('');
         setPanelError('');
@@ -507,7 +291,7 @@ function LinksPanel({ categories, links, onChanged, token }) {
     function openEditForm(link) {
         setEditingLink(link);
         setForm({
-            category_id: link.categoryId ? String(link.categoryId) : '',
+            category: link.category === 'Archive' ? '' : link.category ?? '',
             title: link.title ?? '',
             description: link.description ?? '',
             url: link.url ?? '',
@@ -522,7 +306,7 @@ function LinksPanel({ categories, links, onChanged, token }) {
 
     function closeForm() {
         setEditingLink(null);
-        setForm(createEmptyLinkForm(categories));
+        setForm(createEmptyLinkForm());
         setFormStatus('idle');
         setFormError('');
     }
@@ -543,7 +327,7 @@ function LinksPanel({ categories, links, onChanged, token }) {
         setPanelError('');
 
         const payload = {
-            category_id: form.category_id ? Number(form.category_id) : null,
+            category_name: form.category.trim() || null,
             title: form.title.trim(),
             description: form.description.trim() || null,
             url: form.url.trim(),
@@ -610,9 +394,9 @@ function LinksPanel({ categories, links, onChanged, token }) {
                     onChange={(event) => setCategoryFilter(event.target.value)}
                 >
                     <option value="">All categories</option>
-                    {categories.map((category) => (
-                        <option key={category.id} value={category.id}>
-                            {category.name}
+                    {categoryOptions.map((category) => (
+                        <option key={category} value={category}>
+                            {category}
                         </option>
                     ))}
                 </select>
@@ -639,14 +423,19 @@ function LinksPanel({ categories, links, onChanged, token }) {
                         </label>
                         <label>
                             Category
-                            <select name="category_id" value={form.category_id} onChange={updateForm}>
-                                <option value="">No category</option>
-                                {categories.map((category) => (
-                                    <option key={category.id} value={category.id}>
-                                        {category.name}
-                                    </option>
+                            <input
+                                list="link-category-options"
+                                name="category"
+                                type="text"
+                                value={form.category}
+                                onChange={updateForm}
+                                placeholder="Dokumentasi, Sosmed, Video..."
+                            />
+                            <datalist id="link-category-options">
+                                {categoryOptions.map((category) => (
+                                    <option key={category} value={category} />
                                 ))}
-                            </select>
+                            </datalist>
                         </label>
                         <label>
                             URL
@@ -1135,92 +924,6 @@ function MomentsPanel({ moments, onChanged, token }) {
     );
 }
 
-function SettingsPanel({ bestMoment, onChanged, siteSettings, token }) {
-    const [form, setForm] = useState(createSiteSettingsForm(siteSettings));
-    const [formStatus, setFormStatus] = useState('idle');
-    const [formError, setFormError] = useState('');
-
-    useEffect(() => {
-        setForm(createSiteSettingsForm(siteSettings));
-    }, [siteSettings.tagline, siteSettings.title]);
-
-    function updateForm(event) {
-        const { name, value } = event.target;
-
-        setFormStatus('idle');
-        setFormError('');
-        setForm((current) => ({
-            ...current,
-            [name]: value,
-        }));
-    }
-
-    async function submitForm(event) {
-        event.preventDefault();
-        setFormStatus('saving');
-        setFormError('');
-
-        try {
-            await updateAdminSettings(
-                token,
-                createSettingsPayload(siteSettings, bestMoment, {
-                    site_title: form.site_title.trim(),
-                    tagline: form.tagline.trim() || null,
-                }),
-            );
-            await onChanged?.();
-            setFormStatus('saved');
-        } catch (error) {
-            setFormStatus('idle');
-            setFormError(resolveFormError(error));
-        }
-    }
-
-    return (
-        <section className="admin-panel">
-            <PanelHeader
-                title="Site Settings"
-                description="Atur identitas utama yang muncul di halaman publik."
-            />
-
-            <form className="admin-form-card admin-settings-form" onSubmit={submitForm}>
-                <h3>Public Copy</h3>
-                <label>
-                    Site Title
-                    <input
-                        name="site_title"
-                        type="text"
-                        value={form.site_title}
-                        onChange={updateForm}
-                        placeholder="LHS Archive"
-                        required
-                    />
-                </label>
-                <label>
-                    Tagline
-                    <textarea
-                        name="tagline"
-                        rows="4"
-                        value={form.tagline}
-                        onChange={updateForm}
-                        placeholder="Tempat kecil buat nyimpen semua hal yang pernah rame bareng."
-                    />
-                </label>
-
-                {formError ? <p className="admin-form-error">{formError}</p> : null}
-                {formStatus === 'saved' ? <p className="admin-form-success">Site settings saved.</p> : null}
-
-                <div className="admin-link-form-actions">
-                    <button className="admin-action-button" type="submit" disabled={formStatus === 'saving'}>
-                        <Save size={18} aria-hidden="true" />
-                        {formStatus === 'saving' ? 'Saving...' : 'Save Settings'}
-                    </button>
-                </div>
-            </form>
-        </section>
-    );
-}
-
 function VideoPanel({ bestMoment, onChanged, siteSettings, token }) {
     const [form, setForm] = useState(createVideoSettingsForm(bestMoment));
     const [formStatus, setFormStatus] = useState('idle');
@@ -1320,7 +1023,7 @@ function VideoPanel({ bestMoment, onChanged, siteSettings, token }) {
 
                     <aside className="admin-director-note">
                         <p className="archive-kicker">Director's Note</p>
-                        <p>Keep it under 60 seconds. High contrast and gritty filters work best with the charcoal archive.</p>
+                        <p>Video maksimal 30 MB. Pakai MP4/WebM biar preview halaman utama paling aman di browser.</p>
                     </aside>
                 </div>
 
@@ -1330,7 +1033,11 @@ function VideoPanel({ bestMoment, onChanged, siteSettings, token }) {
                         Live Preview
                     </p>
                     <div className="admin-video-preview">
-                        <img src={bestMoment.thumbnailUrl} alt={bestMoment.title} />
+                        {form.best_moment_video_url ? (
+                            <video src={form.best_moment_video_url} controls muted preload="metadata" title={previewTitle} />
+                        ) : (
+                            <img src={bestMoment.thumbnailUrl} alt={bestMoment.title} />
+                        )}
                         <button type="button" title="Preview video">
                             <Clapperboard size={32} aria-hidden="true" />
                         </button>
@@ -1356,7 +1063,7 @@ function MembersPanel({ members, onChanged, token }) {
     const [deleteStatus, setDeleteStatus] = useState('idle');
     const isEditing = Boolean(editingMember);
     const filteredMembers = members.filter((member) =>
-        matchesSearch(searchQuery, member.name, member.nickname, member.role, member.quote, member.funFact, member.instagramUrl),
+        matchesSearch(searchQuery, member.name, member.nickname, member.quote, member.instagramUrl),
     );
 
     function openCreateForm() {
@@ -1371,11 +1078,9 @@ function MembersPanel({ members, onChanged, token }) {
         setForm({
             name: member.name ?? '',
             nickname: member.nickname ?? '',
-            role: member.role ?? '',
             quote: member.quote ?? '',
             photo_url: member.photoUrl ?? '',
             instagram_url: member.instagramUrl ?? '',
-            fun_fact: member.funFact ?? '',
             sort_order: String(member.sortOrder ?? 0),
         });
         setFormStatus('editing');
@@ -1405,11 +1110,9 @@ function MembersPanel({ members, onChanged, token }) {
         const payload = {
             name: form.name.trim(),
             nickname: form.nickname.trim() || null,
-            role: form.role.trim() || null,
             quote: form.quote.trim() || null,
             photo_url: form.photo_url.trim() || null,
             instagram_url: form.instagram_url.trim() || null,
-            fun_fact: form.fun_fact.trim() || null,
             sort_order: Number(form.sort_order || 0),
         };
 
@@ -1451,7 +1154,7 @@ function MembersPanel({ members, onChanged, token }) {
         <section className="admin-panel">
             <PanelHeader
                 title="Manage Members"
-                description="Archived humans, role absurd, quote, fun fact, dan link sosial."
+                description="Archived humans, quote, foto, dan link sosial."
                 actionLabel="Add Member"
                 actionIcon={UsersRound}
                 onAction={openCreateForm}
@@ -1460,7 +1163,7 @@ function MembersPanel({ members, onChanged, token }) {
             <AdminListToolbar
                 count={filteredMembers.length}
                 countLabel={filteredMembers.length === 1 ? 'member' : 'members'}
-                placeholder="Search name, role, quote..."
+                placeholder="Search name, quote, Instagram..."
                 searchValue={searchQuery}
                 onSearchChange={setSearchQuery}
             />
@@ -1496,16 +1199,6 @@ function MembersPanel({ members, onChanged, token }) {
                                 placeholder="Nama panggilan"
                             />
                         </label>
-                        <label>
-                            Role
-                            <input
-                                name="role"
-                                type="text"
-                                value={form.role}
-                                onChange={updateForm}
-                                placeholder="Ketua dokumentasi chaos"
-                            />
-                        </label>
                         <AdminOrderField value={form.sort_order} onChange={updateForm} />
                         <div className="admin-field-stack admin-link-form-wide">
                             <span className="admin-field-label">Photo File</span>
@@ -1536,16 +1229,6 @@ function MembersPanel({ members, onChanged, token }) {
                                 value={form.quote}
                                 onChange={updateForm}
                                 placeholder="Kalimat paling ikonik dari orang ini"
-                                rows="3"
-                            />
-                        </label>
-                        <label className="admin-link-form-wide">
-                            Fun Fact
-                            <textarea
-                                name="fun_fact"
-                                value={form.fun_fact}
-                                onChange={updateForm}
-                                placeholder="Fakta kecil yang terlalu spesifik untuk dilupakan"
                                 rows="3"
                             />
                         </label>
@@ -1587,11 +1270,10 @@ function MembersPanel({ members, onChanged, token }) {
                                     <UsersRound size={38} aria-hidden="true" />
                                 </div>
                             )}
-                            <span>{member.role || 'Archived Human'}</span>
+                            <span>Archived Human</span>
                             <h3>{member.name}</h3>
                             {member.nickname ? <small className="admin-member-nickname">@{member.nickname}</small> : null}
                             <p>{member.quote || 'Belum ada quote. Masih misterius, masih valid.'}</p>
-                            {member.funFact ? <small className="admin-member-fun-fact">{member.funFact}</small> : null}
                             {member.id ? (
                                 <AdminCardActions onDelete={() => setDeleteTarget(member)} onEdit={() => openEditForm(member)} />
                             ) : null}
@@ -1611,32 +1293,9 @@ function MessagesPanel({ messages, onChanged, token }) {
     const [panelError, setPanelError] = useState('');
     const [actionId, setActionId] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
-    const [visibilityFilter, setVisibilityFilter] = useState('');
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [deleteStatus, setDeleteStatus] = useState('idle');
-    const filteredMessages = messages.filter((message) => {
-        const isVisible = message.isVisible !== false;
-        const visibilityMatches =
-            !visibilityFilter ||
-            (visibilityFilter === 'visible' && isVisible) ||
-            (visibilityFilter === 'hidden' && !isVisible);
-
-        return visibilityMatches && matchesSearch(searchQuery, message.name, message.message);
-    });
-
-    async function toggleVisibility(message) {
-        setActionId(`visibility-${message.id}`);
-        setPanelError('');
-
-        try {
-            await updateAdminMessageVisibility(token, message.id, !message.isVisible);
-            await onChanged?.();
-        } catch (error) {
-            setPanelError(resolveFormError(error));
-        } finally {
-            setActionId('');
-        }
-    }
+    const filteredMessages = messages.filter((message) => matchesSearch(searchQuery, message.name, message.message));
 
     async function confirmDeleteMessage() {
         if (!deleteTarget) {
@@ -1663,7 +1322,7 @@ function MessagesPanel({ messages, onChanged, token }) {
         <section className="admin-panel">
             <PanelHeader
                 title="Visitor Messages"
-                description="Moderasi pesan kenangan sebelum sticky note-nya jadi legenda publik."
+                description="Pesan dari publik langsung tampil; panel ini dipakai untuk melihat dan menghapus yang tidak perlu."
                 actionIcon={FileText}
             />
 
@@ -1673,18 +1332,7 @@ function MessagesPanel({ messages, onChanged, token }) {
                 placeholder="Search sender or message..."
                 searchValue={searchQuery}
                 onSearchChange={setSearchQuery}
-            >
-                <select
-                    className="admin-filter-select"
-                    value={visibilityFilter}
-                    aria-label="Filter messages by visibility"
-                    onChange={(event) => setVisibilityFilter(event.target.value)}
-                >
-                    <option value="">All messages</option>
-                    <option value="hidden">Pending approval</option>
-                    <option value="visible">Visible</option>
-                </select>
-            </AdminListToolbar>
+            />
 
             {panelError ? <p className="admin-form-error">{panelError}</p> : null}
 
@@ -1700,43 +1348,30 @@ function MessagesPanel({ messages, onChanged, token }) {
 
             {filteredMessages.length ? (
                 <div className="admin-message-grid">
-                    {filteredMessages.map((message) => {
-                        const isVisible = message.isVisible !== false;
-
-                        return (
-                            <article
-                                className={isVisible ? 'admin-message-note' : 'admin-message-note is-hidden'}
-                                key={message.id ?? `${message.name}-${message.message}`}
-                                style={{ '--tilt': message.rotation }}
-                            >
-                                <p>{message.message}</p>
-                                <span>{message.name}</span>
-                                <small className="admin-message-status">{isVisible ? 'Visible' : 'Hidden'}</small>
-                                <div>
-                                    <button
-                                        type="button"
-                                        disabled={!message.id || actionId === `visibility-${message.id}`}
-                                        onClick={() => toggleVisibility(message)}
-                                    >
-                                        <CheckCircle2 size={17} aria-hidden="true" />
-                                        {isVisible ? 'Hide' : 'Show'}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        disabled={!message.id || actionId === `delete-${message.id}`}
-                                        onClick={() => setDeleteTarget(message)}
-                                    >
-                                        <Trash2 size={17} aria-hidden="true" />
-                                        Delete
-                                    </button>
-                                </div>
-                            </article>
-                        );
-                    })}
+                    {filteredMessages.map((message) => (
+                        <article
+                            className="admin-message-note"
+                            key={message.id ?? `${message.name}-${message.message}`}
+                            style={{ '--tilt': message.rotation }}
+                        >
+                            <p>{message.message}</p>
+                            <span>{message.name}</span>
+                            <div>
+                                <button
+                                    type="button"
+                                    disabled={!message.id || actionId === `delete-${message.id}`}
+                                    onClick={() => setDeleteTarget(message)}
+                                >
+                                    <Trash2 size={17} aria-hidden="true" />
+                                    Delete
+                                </button>
+                            </div>
+                        </article>
+                    ))}
                 </div>
             ) : (
                 <AdminEmptyState icon={MessageSquareText} title="No messages yet">
-                    {searchQuery || visibilityFilter ? 'Tidak ada pesan yang cocok dengan filter ini.' : 'Belum ada pesan masuk dari halaman publik.'}
+                    {searchQuery ? 'Tidak ada pesan yang cocok dengan pencarian ini.' : 'Belum ada pesan masuk dari halaman publik.'}
                 </AdminEmptyState>
             )}
         </section>
@@ -1894,11 +1529,9 @@ function mapAdminDashboard(dashboard) {
         id: member.id,
         name: member.name,
         nickname: member.nickname,
-        role: member.role,
         quote: member.quote,
         photoUrl: member.photo_url,
         instagramUrl: member.instagram_url,
-        funFact: member.fun_fact,
         sortOrder: member.sort_order,
     }));
 
@@ -1944,22 +1577,15 @@ function mapAdminDashboard(dashboard) {
     };
 }
 
-function createEmptyLinkForm(categories) {
+function createEmptyLinkForm() {
     return {
-        category_id: categories[0]?.id ? String(categories[0].id) : '',
+        category: '',
         title: '',
         description: '',
         url: '',
         thumbnail_url: '',
         is_featured: false,
         sort_order: '0',
-    };
-}
-
-function createEmptyCategoryForm() {
-    return {
-        name: '',
-        slug: '',
     };
 }
 
@@ -1985,19 +1611,10 @@ function createEmptyMemberForm() {
     return {
         name: '',
         nickname: '',
-        role: '',
         quote: '',
         photo_url: '',
         instagram_url: '',
-        fun_fact: '',
         sort_order: '0',
-    };
-}
-
-function createSiteSettingsForm(siteSettings) {
-    return {
-        site_title: siteSettings.title ?? fallbackSiteSettings.title,
-        tagline: siteSettings.tagline ?? '',
     };
 }
 

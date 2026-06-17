@@ -3,7 +3,12 @@ import { X } from 'lucide-react';
 
 export default function AdminModal({ children, eyebrow, isOpen, onClose, size = 'regular', title }) {
     const dialogRef = useRef(null);
+    const onCloseRef = useRef(onClose);
     const titleId = useId();
+
+    useEffect(() => {
+        onCloseRef.current = onClose;
+    }, [onClose]);
 
     useEffect(() => {
         if (!isOpen) {
@@ -26,7 +31,7 @@ export default function AdminModal({ children, eyebrow, isOpen, onClose, size = 
 
         function handleModalKeydown(event) {
             if (event.key === 'Escape') {
-                onClose?.();
+                onCloseRef.current?.();
                 return;
             }
 
@@ -60,7 +65,7 @@ export default function AdminModal({ children, eyebrow, isOpen, onClose, size = 
             window.removeEventListener('keydown', handleModalKeydown);
             previousActiveElement?.focus?.();
         };
-    }, [isOpen, onClose]);
+    }, [isOpen]);
 
     if (!isOpen) {
         return null;
@@ -68,7 +73,7 @@ export default function AdminModal({ children, eyebrow, isOpen, onClose, size = 
 
     function closeFromBackdrop(event) {
         if (event.target === event.currentTarget) {
-            onClose?.();
+            onCloseRef.current?.();
         }
     }
 
@@ -86,7 +91,7 @@ export default function AdminModal({ children, eyebrow, isOpen, onClose, size = 
                         {eyebrow ? <p className="archive-kicker">{eyebrow}</p> : null}
                         <h3 id={titleId}>{title}</h3>
                     </div>
-                    <button className="admin-modal-close" type="button" title="Close modal" onClick={onClose}>
+                    <button className="admin-modal-close" type="button" title="Close modal" onClick={() => onCloseRef.current?.()}>
                         <X size={20} aria-hidden="true" />
                     </button>
                 </header>

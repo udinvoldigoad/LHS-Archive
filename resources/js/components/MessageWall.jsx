@@ -8,6 +8,7 @@ export default function MessageWall({ initialMessages, onSubmitMessage }) {
     const [name, setName] = useState('');
     const [message, setMessage] = useState('');
     const [status, setStatus] = useState('idle');
+    const [isMessageFocused, setIsMessageFocused] = useState(false);
 
     useEffect(() => {
         setNotes(initialMessages);
@@ -30,21 +31,19 @@ export default function MessageWall({ initialMessages, onSubmitMessage }) {
                 ? await onSubmitMessage({ name: trimmedName, message: trimmedMessage })
                 : { name: trimmedName, message: trimmedMessage };
 
-            if (savedMessage.is_visible || savedMessage.isVisible) {
-                setNotes((currentNotes) => [
-                    {
-                        ...savedMessage,
-                        name: savedMessage.name ?? trimmedName,
-                        message: savedMessage.message ?? trimmedMessage,
-                        rotation: savedMessage.rotation ?? (currentNotes.length % 2 === 0 ? '1deg' : '-1deg'),
-                    },
-                    ...currentNotes,
-                ]);
-            }
+            setNotes((currentNotes) => [
+                {
+                    ...savedMessage,
+                    name: savedMessage.name ?? trimmedName,
+                    message: savedMessage.message ?? trimmedMessage,
+                    rotation: savedMessage.rotation ?? (currentNotes.length % 2 === 0 ? '1deg' : '-1deg'),
+                },
+                ...currentNotes,
+            ]);
 
             setName('');
             setMessage('');
-            setStatus(savedMessage.is_visible || savedMessage.isVisible ? 'saved' : 'moderating');
+            setStatus('saved');
         } catch {
             setStatus('error');
         }
@@ -60,6 +59,7 @@ export default function MessageWall({ initialMessages, onSubmitMessage }) {
                     <label htmlFor="guest-name">Nama</label>
                     <input
                         id="guest-name"
+                        maxLength="80"
                         value={name}
                         onChange={(event) => setName(event.target.value)}
                         placeholder="Nama arsiparis dadakan"
@@ -67,18 +67,24 @@ export default function MessageWall({ initialMessages, onSubmitMessage }) {
                     <label htmlFor="guest-message">Pesan</label>
                     <textarea
                         id="guest-message"
+                        maxLength="500"
                         value={message}
                         onChange={(event) => setMessage(event.target.value)}
+                        onBlur={() => setIsMessageFocused(false)}
+                        onFocus={() => setIsMessageFocused(true)}
                         placeholder="Tinggalkan jejak sebelum lupa password kehidupan."
                         rows="5"
                     />
-                    <button className="archive-button archive-button-primary" type="submit">
+                    {(isMessageFocused || message.length > 0) ? (
+                        <p className="message-typing-status" aria-live="polite">
+                            <span aria-hidden="true" />
+                            {message.length ? `Sedang mengetik ${message.length}/500` : 'Kursor pesan aktif'}
+                        </p>
+                    ) : null}
+                    <button className="archive-button archive-button-primary" type="submit" disabled={status === 'saving'}>
                         <Send size={16} aria-hidden="true" />
                         {status === 'saving' ? 'Mengirim...' : 'Kirim Pesan'}
                     </button>
-                    {status === 'moderating' ? (
-                        <p className="form-status-success">Pesan masuk. Tunggu admin approve dulu sebelum muncul.</p>
-                    ) : null}
                     {status === 'saved' ? <p className="form-status-success">Pesan sudah tampil di wall.</p> : null}
                     {status === 'error' ? <p className="form-status-error">Pesan gagal dikirim. Coba lagi sebentar.</p> : null}
                 </form>
@@ -93,7 +99,7 @@ export default function MessageWall({ initialMessages, onSubmitMessage }) {
                     </div>
                 ) : (
                     <EmptyArchiveState title="Belum ada pesan tampil">
-                        Pesan baru akan muncul setelah admin approve. Dramanya tertib dulu.
+                        Pesan pertama yang dikirim akan langsung nongol di sini.
                     </EmptyArchiveState>
                 )}
             </div>

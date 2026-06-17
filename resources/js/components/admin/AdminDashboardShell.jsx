@@ -10,18 +10,14 @@ import {
     MessageSquareText,
     Music,
     Plus,
-    Settings,
-    Tags,
     Trash2,
     UsersRound,
 } from 'lucide-react';
 
 export const adminPanels = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'categories', label: 'Categories', icon: Tags },
     { id: 'links', label: 'Links', icon: Link2 },
     { id: 'moments', label: 'Polaroid Moments', icon: Camera },
-    { id: 'settings', label: 'Site Settings', icon: Settings },
     { id: 'video', label: 'Best Moment Video', icon: Clapperboard },
     { id: 'members', label: 'Members', icon: UsersRound },
     { id: 'messages', label: 'Messages', icon: MessageSquareText },
@@ -74,9 +70,6 @@ export function AdminTopbar({ title }) {
             <div className="admin-topbar-actions" aria-label="Admin utilities">
                 <button type="button" title="Notifications">
                     <Bell size={20} aria-hidden="true" />
-                </button>
-                <button type="button" title="Settings">
-                    <Settings size={20} aria-hidden="true" />
                 </button>
             </div>
         </header>

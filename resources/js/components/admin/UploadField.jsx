@@ -6,17 +6,17 @@ import { formatMediaName } from '../../utils/media.js';
 const mediaLimits = {
     image: {
         acceptLabel: 'JPG, PNG, WebP, GIF',
-        maxBytes: 10 * 1024 * 1024,
+        maxBytes: 5 * 1024 * 1024,
         previewLabel: 'Image preview',
     },
     video: {
         acceptLabel: 'MP4, WebM, MOV',
-        maxBytes: 100 * 1024 * 1024,
+        maxBytes: 30 * 1024 * 1024,
         previewLabel: 'Video preview',
     },
     audio: {
         acceptLabel: 'MP3, WAV, OGG, M4A',
-        maxBytes: 20 * 1024 * 1024,
+        maxBytes: 2 * 1024 * 1024,
         previewLabel: 'Audio preview',
     },
 };

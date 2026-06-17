@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Support\ArchiveMedia;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class UploadController extends Controller
@@ -22,7 +23,7 @@ class UploadController extends Controller
         ]);
 
         $file = $request->file('file');
-        $path = $file->store('archive/'.$kind.'s', 'public');
+        $path = Storage::disk(ArchiveMedia::disk())->putFile('archive/'.$kind.'s', $file);
 
         return response()->json([
             'kind' => $kind,
@@ -37,9 +38,9 @@ class UploadController extends Controller
     private function rulesForKind(string $kind): array
     {
         return match ($kind) {
-            'image' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,gif', 'max:10240'],
-            'video' => ['required', 'file', 'mimes:mp4,webm,mov', 'max:102400'],
-            'audio' => ['required', 'file', 'mimes:mp3,wav,ogg,m4a', 'max:20480'],
+            'image' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
+            'video' => ['required', 'file', 'mimes:mp4,webm,mov', 'max:30720'],
+            'audio' => ['required', 'file', 'mimes:mp3,wav,ogg,m4a', 'max:2048'],
         };
     }
 }

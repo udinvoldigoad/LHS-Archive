@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
     archiveLinks as fallbackArchiveLinks,
     bestMoment as fallbackBestMoment,
@@ -28,6 +28,33 @@ import {
 } from '../utils/sectionNavigation.js';
 import { fetchArchive, postPublicMessage } from '../services/api.js';
 
+function photosFromMoments(moments) {
+    const seen = new Set();
+    const photos = [];
+
+    moments.forEach((moment) => {
+        const momentPhotos = Array.isArray(moment.photos) && moment.photos.length
+            ? moment.photos
+            : [{ imageUrl: moment.imageUrl, caption: moment.caption }];
+
+        momentPhotos.forEach((photo) => {
+            const src = photo.imageUrl || photo.src;
+
+            if (!src || seen.has(src)) {
+                return;
+            }
+
+            seen.add(src);
+            photos.push({
+                src,
+                alt: photo.caption || moment.title || 'LHS Archive memory',
+            });
+        });
+    });
+
+    return photos.slice(0, 10);
+}
+
 export default function Home() {
     const [activePhoto, setActivePhoto] = useState(null);
     const [activeMember, setActiveMember] = useState(null);
@@ -39,6 +66,11 @@ export default function Home() {
         members: fallbackMembers,
         messages: fallbackMessages,
     });
+    const heroArchivePhotos = useMemo(() => {
+        const uploadedPhotos = photosFromMoments(archive.moments);
+
+        return uploadedPhotos.length ? uploadedPhotos : heroPhotos;
+    }, [archive.moments]);
 
     useEffect(() => {
         let isMounted = true;
@@ -111,7 +143,7 @@ export default function Home() {
         <div className="site-shell">
             <Navbar title={archive.settings.title} />
             <main>
-                <Hero settings={archive.settings} photos={heroPhotos} />
+                <Hero settings={archive.settings} photos={heroArchivePhotos} />
                 <BestMoment moment={archive.bestMoment} />
                 <ArchiveLinks links={archive.links} />
                 <ScrapbookMoments moments={archive.moments} onOpenPhoto={setActivePhoto} />
@@ -149,9 +181,7 @@ export default function Home() {
                         <div>
                             <p className="archive-kicker">Archived Human</p>
                             <h2 id="member-modal-title">{activeMember.name}</h2>
-                            <p className="member-modal-role">{activeMember.role}</p>
                             <blockquote>{activeMember.quote}</blockquote>
-                            <p>{activeMember.funFact}</p>
                             <a href={activeMember.instagramUrl} target="_blank" rel="noreferrer">
                                 Instagram Placeholder
                             </a>
