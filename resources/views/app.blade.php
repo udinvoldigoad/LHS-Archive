@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html class="notranslate" lang="{{ str_replace('_', '-', app()->getLocale()) }}" translate="no">
     <head>
         @php
             $siteTitle = 'LHS Archive';
@@ -11,6 +11,7 @@
         <meta name="theme-color" content="#121414">
         <meta name="description" content="{{ $siteDescription }}">
         <meta name="application-name" content="{{ $siteTitle }}">
+        <meta name="google" content="notranslate">
         <link rel="canonical" href="{{ url('/') }}">
 
         <meta property="og:site_name" content="{{ $siteTitle }}">
@@ -33,7 +34,7 @@
         @viteReactRefresh
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body>
+    <body translate="no">
         <div id="root"></div>
     </body>
 </html>
