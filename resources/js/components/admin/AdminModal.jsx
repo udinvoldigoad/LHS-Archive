@@ -1,8 +1,9 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import { X } from 'lucide-react';
 
-export default function AdminModal({ children, eyebrow, isOpen, onClose, title }) {
+export default function AdminModal({ children, eyebrow, isOpen, onClose, size = 'regular', title }) {
     const dialogRef = useRef(null);
+    const titleId = useId();
 
     useEffect(() => {
         if (!isOpen) {
@@ -17,7 +18,9 @@ export default function AdminModal({ children, eyebrow, isOpen, onClose, title }
         document.documentElement.style.overflow = 'hidden';
 
         requestAnimationFrame(() => {
-            const firstFocusable = getFocusableElements(dialogRef.current)[0];
+            const firstFocusable =
+                getFocusableElements(dialogRef.current?.querySelector('.admin-modal-body'))[0] ??
+                getFocusableElements(dialogRef.current)[0];
             firstFocusable?.focus();
         });
 
@@ -57,7 +60,7 @@ export default function AdminModal({ children, eyebrow, isOpen, onClose, title }
             window.removeEventListener('keydown', handleModalKeydown);
             previousActiveElement?.focus?.();
         };
-    }, [isOpen]);
+    }, [isOpen, onClose]);
 
     if (!isOpen) {
         return null;
@@ -71,11 +74,17 @@ export default function AdminModal({ children, eyebrow, isOpen, onClose, title }
 
     return (
         <div className="admin-modal-backdrop" onMouseDown={closeFromBackdrop}>
-            <section aria-label={title} aria-modal="true" className="admin-modal" ref={dialogRef} role="dialog">
+            <section
+                aria-labelledby={titleId}
+                aria-modal="true"
+                className={`admin-modal admin-modal-${size}`}
+                ref={dialogRef}
+                role="dialog"
+            >
                 <header className="admin-modal-header">
-                    <div>
+                    <div className="admin-modal-title-block">
                         {eyebrow ? <p className="archive-kicker">{eyebrow}</p> : null}
-                        <h3>{title}</h3>
+                        <h3 id={titleId}>{title}</h3>
                     </div>
                     <button className="admin-modal-close" type="button" title="Close modal" onClick={onClose}>
                         <X size={20} aria-hidden="true" />

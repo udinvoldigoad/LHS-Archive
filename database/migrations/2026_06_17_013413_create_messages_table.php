@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->text('message');
-            $table->boolean('is_visible')->default(true);
+            $table->boolean('is_visible')->default(false);
             $table->timestamps();
         });
     }

@@ -14,6 +14,7 @@ import BestMoment from '../components/BestMoment.jsx';
 import ArchiveLinks from '../components/ArchiveLinks.jsx';
 import ScrapbookMoments from '../components/ScrapbookMoments.jsx';
 import MemberArchive from '../components/MemberArchive.jsx';
+import MediaPlaceholder from '../components/MediaPlaceholder.jsx';
 import MessageWall from '../components/MessageWall.jsx';
 import MusicToggle from '../components/MusicToggle.jsx';
 import Footer from '../components/Footer.jsx';
@@ -126,7 +127,7 @@ export default function Home() {
                         {activePhoto.imageUrl ? (
                             <img src={activePhoto.imageUrl} alt={activePhoto.title} />
                         ) : (
-                            <div className="archive-media-placeholder">No photo</div>
+                            <MediaPlaceholder type="image" />
                         )}
                         <div>
                             <p className="archive-kicker">Polaroid Memory</p>
@@ -143,7 +144,7 @@ export default function Home() {
                         {activeMember.photoUrl ? (
                             <img src={activeMember.photoUrl} alt={activeMember.name} />
                         ) : (
-                            <div className="archive-media-placeholder">No photo</div>
+                            <MediaPlaceholder type="member" />
                         )}
                         <div>
                             <p className="archive-kicker">Archived Human</p>

@@ -1,16 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-    Bell,
     Camera,
     CheckCircle2,
     Clapperboard,
-    Edit3,
     Eye,
     FileText,
     ImagePlus,
-    LayoutDashboard,
     Link2,
-    LogOut,
     MessageSquareText,
     Music,
     Plus,
@@ -51,21 +47,20 @@ import {
     updateAdminSettings,
 } from '../services/api.js';
 import AdminEmptyState from '../components/admin/AdminEmptyState.jsx';
+import AdminConfirmModal from '../components/admin/AdminConfirmModal.jsx';
+import {
+    AdminCardActions,
+    AdminFloatingActions,
+    AdminSidebar,
+    AdminTopbar,
+    adminPanels,
+    PanelHeader,
+} from '../components/admin/AdminDashboardShell.jsx';
+import AdminListToolbar from '../components/admin/AdminListToolbar.jsx';
 import AdminModal from '../components/admin/AdminModal.jsx';
+import AdminOrderField from '../components/admin/AdminOrderField.jsx';
 import UploadField from '../components/admin/UploadField.jsx';
 import { formatMediaName } from '../utils/media.js';
-
-const adminPanels = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'categories', label: 'Categories', icon: Tags },
-    { id: 'links', label: 'Links', icon: Link2 },
-    { id: 'moments', label: 'Polaroid Moments', icon: Camera },
-    { id: 'settings', label: 'Site Settings', icon: Settings },
-    { id: 'video', label: 'Best Moment Video', icon: Clapperboard },
-    { id: 'members', label: 'Members', icon: UsersRound },
-    { id: 'messages', label: 'Messages', icon: MessageSquareText },
-    { id: 'music', label: 'Music', icon: Music },
-];
 
 const momentPhotoCounts = [12, 8, 3, 24, 5];
 
@@ -105,7 +100,6 @@ export default function AdminDashboard({ token, onLogout }) {
                 activePanel={activePanel}
                 onLogout={onLogout}
                 onSelectPanel={setActivePanel}
-                profilePhoto={adminData.members[0]?.photoUrl ?? fallbackMembers[0].photoUrl}
             />
 
             <main className="admin-dashboard-main">
@@ -166,81 +160,6 @@ export default function AdminDashboard({ token, onLogout }) {
                     />
                 ) : null}
             </main>
-        </div>
-    );
-}
-
-function AdminSidebar({ activePanel, onSelectPanel, onLogout, profilePhoto }) {
-    return (
-        <aside className="admin-sidebar">
-            <div className="admin-profile">
-                <img src={profilePhoto} alt="Admin avatar" />
-                <div>
-                    <h2>LHS Admin</h2>
-                    <p>Archive Custodian</p>
-                </div>
-            </div>
-
-            <nav className="admin-sidebar-nav" aria-label="Admin panels">
-                {adminPanels.map((panel) => {
-                    const Icon = panel.icon;
-
-                    return (
-                        <button
-                            className={activePanel === panel.id ? 'is-active' : undefined}
-                            key={panel.id}
-                            type="button"
-                            onClick={() => onSelectPanel(panel.id)}
-                        >
-                            <Icon size={20} aria-hidden="true" />
-                            {panel.label}
-                        </button>
-                    );
-                })}
-            </nav>
-
-            <div className="admin-sidebar-footer">
-                <a href="/#archive">View Public Archive</a>
-                <button type="button" onClick={onLogout}>
-                    <LogOut size={20} aria-hidden="true" />
-                    Logout
-                </button>
-            </div>
-        </aside>
-    );
-}
-
-function AdminTopbar({ title }) {
-    return (
-        <header className="admin-topbar">
-            <div>
-                <h1>{title}</h1>
-            </div>
-            <div className="admin-topbar-actions" aria-label="Admin utilities">
-                <button type="button" title="Notifications">
-                    <Bell size={20} aria-hidden="true" />
-                </button>
-                <button type="button" title="Settings">
-                    <Settings size={20} aria-hidden="true" />
-                </button>
-            </div>
-        </header>
-    );
-}
-
-function PanelHeader({ title, description, actionLabel, actionIcon: ActionIcon = Plus, onAction }) {
-    return (
-        <div className="admin-panel-header">
-            <div>
-                <h2>{title}</h2>
-                <p>{description}</p>
-            </div>
-            {actionLabel ? (
-                <button className="admin-action-button" type="button" onClick={onAction}>
-                    <ActionIcon size={18} aria-hidden="true" />
-                    {actionLabel}
-                </button>
-            ) : null}
         </div>
     );
 }
@@ -378,7 +297,11 @@ function CategoriesPanel({ categories, onChanged, token }) {
     const [form, setForm] = useState(createEmptyCategoryForm());
     const [formStatus, setFormStatus] = useState('idle');
     const [panelError, setPanelError] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [deleteTarget, setDeleteTarget] = useState(null);
+    const [deleteStatus, setDeleteStatus] = useState('idle');
     const isEditing = Boolean(editingCategory);
+    const filteredCategories = categories.filter((category) => matchesSearch(searchQuery, category.name, category.slug));
 
     function openCreateForm() {
         setEditingCategory(null);
@@ -438,20 +361,22 @@ function CategoriesPanel({ categories, onChanged, token }) {
         }
     }
 
-    async function deleteCategory(category) {
-        const confirmed = window.confirm(`Hapus category "${category.name}"? Link yang memakai category ini akan jadi tanpa category.`);
-
-        if (!confirmed) {
+    async function confirmDeleteCategory() {
+        if (!deleteTarget) {
             return;
         }
 
+        setDeleteStatus('deleting');
         setPanelError('');
 
         try {
-            await deleteAdminCategory(token, category.id);
+            await deleteAdminCategory(token, deleteTarget.id);
             await onChanged?.();
+            setDeleteTarget(null);
         } catch (error) {
             setPanelError(resolveFormError(error));
+        } finally {
+            setDeleteStatus('idle');
         }
     }
 
@@ -466,6 +391,14 @@ function CategoriesPanel({ categories, onChanged, token }) {
             />
 
             {panelError && formStatus === 'idle' ? <p className="admin-form-error">{panelError}</p> : null}
+
+            <AdminListToolbar
+                count={filteredCategories.length}
+                countLabel={filteredCategories.length === 1 ? 'category' : 'categories'}
+                placeholder="Search category..."
+                searchValue={searchQuery}
+                onSearchChange={setSearchQuery}
+            />
 
             <AdminModal
                 eyebrow={isEditing ? 'Edit Category' : 'New Category'}
@@ -509,9 +442,19 @@ function CategoriesPanel({ categories, onChanged, token }) {
                 </form>
             </AdminModal>
 
-            {categories.length ? (
+            <AdminConfirmModal
+                body={`Link yang memakai category "${deleteTarget?.name ?? ''}" akan jadi tanpa category.`}
+                confirmLabel="Delete Category"
+                isOpen={Boolean(deleteTarget)}
+                isWorking={deleteStatus === 'deleting'}
+                title={`Hapus ${deleteTarget?.name ?? 'category'}?`}
+                onClose={() => setDeleteTarget(null)}
+                onConfirm={confirmDeleteCategory}
+            />
+
+            {filteredCategories.length ? (
                 <div className="admin-category-grid">
-                    {categories.map((category, index) => (
+                    {filteredCategories.map((category, index) => (
                         <article
                             className="admin-category-card"
                             key={category.id ?? category.slug}
@@ -521,7 +464,7 @@ function CategoriesPanel({ categories, onChanged, token }) {
                             <h3>{category.name}</h3>
                             <p>/{category.slug}</p>
                             <AdminCardActions
-                                onDelete={() => deleteCategory(category)}
+                                onDelete={() => setDeleteTarget(category)}
                                 onEdit={() => openEditForm(category)}
                             />
                         </article>
@@ -529,7 +472,7 @@ function CategoriesPanel({ categories, onChanged, token }) {
                 </div>
             ) : (
                 <AdminEmptyState icon={Tags} title="No categories yet">
-                    Tambah category pertama supaya link archive lebih gampang dibaca.
+                    {searchQuery ? 'Tidak ada category yang cocok dengan pencarian itu.' : 'Tambah category pertama supaya link archive lebih gampang dibaca.'}
                 </AdminEmptyState>
             )}
         </section>
@@ -542,7 +485,16 @@ function LinksPanel({ categories, links, onChanged, token }) {
     const [formStatus, setFormStatus] = useState('idle');
     const [formError, setFormError] = useState('');
     const [panelError, setPanelError] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [categoryFilter, setCategoryFilter] = useState('');
+    const [deleteTarget, setDeleteTarget] = useState(null);
+    const [deleteStatus, setDeleteStatus] = useState('idle');
     const isEditing = Boolean(editingLink);
+    const filteredLinks = links.filter((link) => {
+        const categoryMatches = !categoryFilter || String(link.categoryId ?? '') === categoryFilter;
+
+        return categoryMatches && matchesSearch(searchQuery, link.title, link.description, link.url, link.category);
+    });
 
     function openCreateForm() {
         setEditingLink(null);
@@ -615,20 +567,22 @@ function LinksPanel({ categories, links, onChanged, token }) {
         }
     }
 
-    async function deleteLink(link) {
-        const confirmed = window.confirm(`Hapus link "${link.title}" dari archive?`);
-
-        if (!confirmed) {
+    async function confirmDeleteLink() {
+        if (!deleteTarget) {
             return;
         }
 
+        setDeleteStatus('deleting');
         setPanelError('');
 
         try {
-            await deleteAdminLink(token, link.id);
+            await deleteAdminLink(token, deleteTarget.id);
             await onChanged?.();
+            setDeleteTarget(null);
         } catch (error) {
             setPanelError(resolveFormError(error));
+        } finally {
+            setDeleteStatus('idle');
         }
     }
 
@@ -641,6 +595,28 @@ function LinksPanel({ categories, links, onChanged, token }) {
                 actionIcon={Plus}
                 onAction={openCreateForm}
             />
+
+            <AdminListToolbar
+                count={filteredLinks.length}
+                countLabel={filteredLinks.length === 1 ? 'link' : 'links'}
+                placeholder="Search title, URL, category..."
+                searchValue={searchQuery}
+                onSearchChange={setSearchQuery}
+            >
+                <select
+                    className="admin-filter-select"
+                    value={categoryFilter}
+                    aria-label="Filter links by category"
+                    onChange={(event) => setCategoryFilter(event.target.value)}
+                >
+                    <option value="">All categories</option>
+                    {categories.map((category) => (
+                        <option key={category.id} value={category.id}>
+                            {category.name}
+                        </option>
+                    ))}
+                </select>
+            </AdminListToolbar>
 
             <AdminModal
                 eyebrow={isEditing ? 'Edit Link' : 'New Link'}
@@ -705,16 +681,7 @@ function LinksPanel({ categories, links, onChanged, token }) {
                                 rows="3"
                             />
                         </label>
-                        <label>
-                            Sort Order
-                            <input
-                                name="sort_order"
-                                type="number"
-                                min="0"
-                                value={form.sort_order}
-                                onChange={updateForm}
-                            />
-                        </label>
+                        <AdminOrderField value={form.sort_order} onChange={updateForm} />
                         <label className="admin-checkbox-field">
                             <input
                                 name="is_featured"
@@ -737,11 +704,21 @@ function LinksPanel({ categories, links, onChanged, token }) {
                 </form>
             </AdminModal>
 
+            <AdminConfirmModal
+                body={`Link "${deleteTarget?.title ?? ''}" akan hilang dari archive publik.`}
+                confirmLabel="Delete Link"
+                isOpen={Boolean(deleteTarget)}
+                isWorking={deleteStatus === 'deleting'}
+                title={`Hapus ${deleteTarget?.title ?? 'link'}?`}
+                onClose={() => setDeleteTarget(null)}
+                onConfirm={confirmDeleteLink}
+            />
+
             {panelError && formStatus === 'idle' ? <p className="admin-form-error">{panelError}</p> : null}
 
-            {links.length ? (
+            {filteredLinks.length ? (
                 <div className="admin-link-grid">
-                    {links.map((link, index) => (
+                    {filteredLinks.map((link, index) => (
                         <article
                             className="admin-link-card"
                             key={link.id ?? link.title}
@@ -761,14 +738,14 @@ function LinksPanel({ categories, links, onChanged, token }) {
                             <p>{link.description}</p>
                             <div className="admin-card-footer">
                                 <span>Order: {link.sortOrder ?? index}</span>
-                                <AdminCardActions onDelete={() => deleteLink(link)} onEdit={() => openEditForm(link)} />
+                                <AdminCardActions onDelete={() => setDeleteTarget(link)} onEdit={() => openEditForm(link)} />
                             </div>
                         </article>
                     ))}
                 </div>
             ) : (
                 <AdminEmptyState icon={Link2} title="No links yet">
-                    Tambah link pertama untuk mulai mengisi archive.
+                    {searchQuery || categoryFilter ? 'Tidak ada link yang cocok dengan filter ini.' : 'Tambah link pertama untuk mulai mengisi archive.'}
                 </AdminEmptyState>
             )}
         </section>
@@ -784,8 +761,20 @@ function MomentsPanel({ moments, onChanged, token }) {
     const [photoForm, setPhotoForm] = useState(createEmptyPhotoForm());
     const [photoFormStatus, setPhotoFormStatus] = useState('idle');
     const [panelError, setPanelError] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [deleteTarget, setDeleteTarget] = useState(null);
+    const [deleteStatus, setDeleteStatus] = useState('idle');
     const isEditingMoment = Boolean(editingMoment);
     const isEditingPhoto = Boolean(editingPhoto);
+    const filteredMoments = moments.filter((moment) =>
+        matchesSearch(
+            searchQuery,
+            moment.title,
+            moment.description,
+            moment.slug,
+            ...(moment.photos ?? []).map((photo) => photo.caption),
+        ),
+    );
 
     function openCreateMomentForm() {
         closePhotoForm();
@@ -848,23 +837,30 @@ function MomentsPanel({ moments, onChanged, token }) {
         }
     }
 
-    async function deleteMoment(moment) {
-        const confirmed = window.confirm(`Hapus moment "${moment.title}" beserta semua fotonya?`);
-
-        if (!confirmed) {
+    async function confirmDeleteMomentOrPhoto() {
+        if (!deleteTarget) {
             return;
         }
 
+        setDeleteStatus('deleting');
         setPanelError('');
 
         try {
-            await deleteAdminMoment(token, moment.id);
-            if (photoMoment?.id === moment.id) {
-                closePhotoForm();
+            if (deleteTarget.type === 'moment') {
+                await deleteAdminMoment(token, deleteTarget.moment.id);
+                if (photoMoment?.id === deleteTarget.moment.id) {
+                    closePhotoForm();
+                }
+            } else {
+                await deleteAdminPhoto(token, deleteTarget.photo.id);
             }
+
             await onChanged?.();
+            setDeleteTarget(null);
         } catch (error) {
             setPanelError(resolveFormError(error));
+        } finally {
+            setDeleteStatus('idle');
         }
     }
 
@@ -942,23 +938,6 @@ function MomentsPanel({ moments, onChanged, token }) {
         }
     }
 
-    async function deletePhoto(moment, photo) {
-        const confirmed = window.confirm(`Hapus foto dari moment "${moment.title}"?`);
-
-        if (!confirmed) {
-            return;
-        }
-
-        setPanelError('');
-
-        try {
-            await deleteAdminPhoto(token, photo.id);
-            await onChanged?.();
-        } catch (error) {
-            setPanelError(resolveFormError(error));
-        }
-    }
-
     return (
         <section className="admin-panel">
             <PanelHeader
@@ -967,6 +946,14 @@ function MomentsPanel({ moments, onChanged, token }) {
                 actionLabel="New Moment"
                 actionIcon={ImagePlus}
                 onAction={openCreateMomentForm}
+            />
+
+            <AdminListToolbar
+                count={filteredMoments.length}
+                countLabel={filteredMoments.length === 1 ? 'moment' : 'moments'}
+                placeholder="Search moment, slug, caption..."
+                searchValue={searchQuery}
+                onSearchChange={setSearchQuery}
             />
 
             {panelError && momentFormStatus === 'idle' && photoFormStatus === 'idle' ? (
@@ -1054,16 +1041,7 @@ function MomentsPanel({ moments, onChanged, token }) {
                                 placeholder="-2deg"
                             />
                         </label>
-                        <label>
-                            Sort Order
-                            <input
-                                name="sort_order"
-                                type="number"
-                                min="0"
-                                value={photoForm.sort_order}
-                                onChange={updatePhotoForm}
-                            />
-                        </label>
+                        <AdminOrderField value={photoForm.sort_order} onChange={updatePhotoForm} />
                         <label className="admin-link-form-wide">
                             Caption
                             <textarea
@@ -1088,7 +1066,7 @@ function MomentsPanel({ moments, onChanged, token }) {
                                         <span>{photo.rotation || '0deg'} / order {photo.sortOrder ?? 0}</span>
                                     </div>
                                     <AdminCardActions
-                                        onDelete={() => deletePhoto(photoMoment, photo)}
+                                        onDelete={() => setDeleteTarget({ type: 'photo', moment: photoMoment, photo })}
                                         onEdit={() => openEditPhotoForm(photoMoment, photo)}
                                     />
                                 </article>
@@ -1105,9 +1083,23 @@ function MomentsPanel({ moments, onChanged, token }) {
                 </form>
             </AdminModal>
 
-            {moments.length ? (
+            <AdminConfirmModal
+                body={
+                    deleteTarget?.type === 'moment'
+                        ? `Moment "${deleteTarget.moment.title}" beserta semua fotonya akan dihapus.`
+                        : `Foto dari moment "${deleteTarget?.moment?.title ?? ''}" akan dihapus.`
+                }
+                confirmLabel={deleteTarget?.type === 'moment' ? 'Delete Moment' : 'Delete Photo'}
+                isOpen={Boolean(deleteTarget)}
+                isWorking={deleteStatus === 'deleting'}
+                title={deleteTarget?.type === 'moment' ? `Hapus ${deleteTarget.moment.title}?` : 'Hapus foto ini?'}
+                onClose={() => setDeleteTarget(null)}
+                onConfirm={confirmDeleteMomentOrPhoto}
+            />
+
+            {filteredMoments.length ? (
                 <div className="admin-polaroid-grid">
-                    {moments.map((moment, index) => (
+                    {filteredMoments.map((moment, index) => (
                         <article
                             className={photoMoment?.id === moment.id ? 'admin-polaroid-admin-card is-selected' : 'admin-polaroid-admin-card'}
                             key={moment.id ?? moment.title}
@@ -1128,7 +1120,7 @@ function MomentsPanel({ moments, onChanged, token }) {
                             </div>
                             <AdminFloatingActions
                                 onAddPhoto={() => openCreatePhotoForm(moment)}
-                                onDelete={() => deleteMoment(moment)}
+                                onDelete={() => setDeleteTarget({ type: 'moment', moment })}
                                 onEdit={() => openEditMomentForm(moment)}
                             />
                         </article>
@@ -1136,7 +1128,7 @@ function MomentsPanel({ moments, onChanged, token }) {
                 </div>
             ) : (
                 <AdminEmptyState icon={Camera} title="No moments yet">
-                    Buat moment pertama, lalu tambahkan foto-foto polaroidnya.
+                    {searchQuery ? 'Tidak ada moment yang cocok dengan pencarian itu.' : 'Buat moment pertama, lalu tambahkan foto-foto polaroidnya.'}
                 </AdminEmptyState>
             )}
         </section>
@@ -1359,7 +1351,13 @@ function MembersPanel({ members, onChanged, token }) {
     const [form, setForm] = useState(createEmptyMemberForm());
     const [formStatus, setFormStatus] = useState('idle');
     const [panelError, setPanelError] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [deleteTarget, setDeleteTarget] = useState(null);
+    const [deleteStatus, setDeleteStatus] = useState('idle');
     const isEditing = Boolean(editingMember);
+    const filteredMembers = members.filter((member) =>
+        matchesSearch(searchQuery, member.name, member.nickname, member.role, member.quote, member.funFact, member.instagramUrl),
+    );
 
     function openCreateForm() {
         setEditingMember(null);
@@ -1430,20 +1428,22 @@ function MembersPanel({ members, onChanged, token }) {
         }
     }
 
-    async function deleteMember(member) {
-        const confirmed = window.confirm(`Hapus member "${member.name}" dari archive?`);
-
-        if (!confirmed) {
+    async function confirmDeleteMember() {
+        if (!deleteTarget) {
             return;
         }
 
+        setDeleteStatus('deleting');
         setPanelError('');
 
         try {
-            await deleteAdminMember(token, member.id);
+            await deleteAdminMember(token, deleteTarget.id);
             await onChanged?.();
+            setDeleteTarget(null);
         } catch (error) {
             setPanelError(resolveFormError(error));
+        } finally {
+            setDeleteStatus('idle');
         }
     }
 
@@ -1455,6 +1455,14 @@ function MembersPanel({ members, onChanged, token }) {
                 actionLabel="Add Member"
                 actionIcon={UsersRound}
                 onAction={openCreateForm}
+            />
+
+            <AdminListToolbar
+                count={filteredMembers.length}
+                countLabel={filteredMembers.length === 1 ? 'member' : 'members'}
+                placeholder="Search name, role, quote..."
+                searchValue={searchQuery}
+                onSearchChange={setSearchQuery}
             />
 
             {panelError && formStatus === 'idle' ? <p className="admin-form-error">{panelError}</p> : null}
@@ -1498,16 +1506,7 @@ function MembersPanel({ members, onChanged, token }) {
                                 placeholder="Ketua dokumentasi chaos"
                             />
                         </label>
-                        <label>
-                            Sort Order
-                            <input
-                                name="sort_order"
-                                type="number"
-                                min="0"
-                                value={form.sort_order}
-                                onChange={updateForm}
-                            />
-                        </label>
+                        <AdminOrderField value={form.sort_order} onChange={updateForm} />
                         <div className="admin-field-stack admin-link-form-wide">
                             <span className="admin-field-label">Photo File</span>
                             <UploadField
@@ -1563,9 +1562,19 @@ function MembersPanel({ members, onChanged, token }) {
                 </form>
             </AdminModal>
 
-            {members.length ? (
+            <AdminConfirmModal
+                body={`Member "${deleteTarget?.name ?? ''}" akan hilang dari archive publik.`}
+                confirmLabel="Delete Member"
+                isOpen={Boolean(deleteTarget)}
+                isWorking={deleteStatus === 'deleting'}
+                title={`Hapus ${deleteTarget?.name ?? 'member'}?`}
+                onClose={() => setDeleteTarget(null)}
+                onConfirm={confirmDeleteMember}
+            />
+
+            {filteredMembers.length ? (
                 <div className="admin-member-grid">
-                    {members.map((member, index) => (
+                    {filteredMembers.map((member, index) => (
                         <article
                             className="admin-member-admin-card"
                             key={member.id ?? member.name}
@@ -1584,14 +1593,14 @@ function MembersPanel({ members, onChanged, token }) {
                             <p>{member.quote || 'Belum ada quote. Masih misterius, masih valid.'}</p>
                             {member.funFact ? <small className="admin-member-fun-fact">{member.funFact}</small> : null}
                             {member.id ? (
-                                <AdminCardActions onDelete={() => deleteMember(member)} onEdit={() => openEditForm(member)} />
+                                <AdminCardActions onDelete={() => setDeleteTarget(member)} onEdit={() => openEditForm(member)} />
                             ) : null}
                         </article>
                     ))}
                 </div>
             ) : (
                 <AdminEmptyState icon={UsersRound} title="No members yet">
-                    Tambah manusia pertama yang layak masuk arsip.
+                    {searchQuery ? 'Tidak ada member yang cocok dengan pencarian itu.' : 'Tambah manusia pertama yang layak masuk arsip.'}
                 </AdminEmptyState>
             )}
         </section>
@@ -1601,6 +1610,19 @@ function MembersPanel({ members, onChanged, token }) {
 function MessagesPanel({ messages, onChanged, token }) {
     const [panelError, setPanelError] = useState('');
     const [actionId, setActionId] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [visibilityFilter, setVisibilityFilter] = useState('');
+    const [deleteTarget, setDeleteTarget] = useState(null);
+    const [deleteStatus, setDeleteStatus] = useState('idle');
+    const filteredMessages = messages.filter((message) => {
+        const isVisible = message.isVisible !== false;
+        const visibilityMatches =
+            !visibilityFilter ||
+            (visibilityFilter === 'visible' && isVisible) ||
+            (visibilityFilter === 'hidden' && !isVisible);
+
+        return visibilityMatches && matchesSearch(searchQuery, message.name, message.message);
+    });
 
     async function toggleVisibility(message) {
         setActionId(`visibility-${message.id}`);
@@ -1616,23 +1638,24 @@ function MessagesPanel({ messages, onChanged, token }) {
         }
     }
 
-    async function deleteMessage(message) {
-        const confirmed = window.confirm(`Hapus pesan dari "${message.name}"?`);
-
-        if (!confirmed) {
+    async function confirmDeleteMessage() {
+        if (!deleteTarget) {
             return;
         }
 
-        setActionId(`delete-${message.id}`);
+        setActionId(`delete-${deleteTarget.id}`);
+        setDeleteStatus('deleting');
         setPanelError('');
 
         try {
-            await deleteAdminMessage(token, message.id);
+            await deleteAdminMessage(token, deleteTarget.id);
             await onChanged?.();
+            setDeleteTarget(null);
         } catch (error) {
             setPanelError(resolveFormError(error));
         } finally {
             setActionId('');
+            setDeleteStatus('idle');
         }
     }
 
@@ -1644,11 +1667,40 @@ function MessagesPanel({ messages, onChanged, token }) {
                 actionIcon={FileText}
             />
 
+            <AdminListToolbar
+                count={filteredMessages.length}
+                countLabel={filteredMessages.length === 1 ? 'message' : 'messages'}
+                placeholder="Search sender or message..."
+                searchValue={searchQuery}
+                onSearchChange={setSearchQuery}
+            >
+                <select
+                    className="admin-filter-select"
+                    value={visibilityFilter}
+                    aria-label="Filter messages by visibility"
+                    onChange={(event) => setVisibilityFilter(event.target.value)}
+                >
+                    <option value="">All messages</option>
+                    <option value="hidden">Pending approval</option>
+                    <option value="visible">Visible</option>
+                </select>
+            </AdminListToolbar>
+
             {panelError ? <p className="admin-form-error">{panelError}</p> : null}
 
-            {messages.length ? (
+            <AdminConfirmModal
+                body={`Pesan dari "${deleteTarget?.name ?? ''}" akan dihapus permanen.`}
+                confirmLabel="Delete Message"
+                isOpen={Boolean(deleteTarget)}
+                isWorking={deleteStatus === 'deleting'}
+                title={`Hapus pesan ${deleteTarget?.name ? `dari ${deleteTarget.name}` : 'ini'}?`}
+                onClose={() => setDeleteTarget(null)}
+                onConfirm={confirmDeleteMessage}
+            />
+
+            {filteredMessages.length ? (
                 <div className="admin-message-grid">
-                    {messages.map((message) => {
+                    {filteredMessages.map((message) => {
                         const isVisible = message.isVisible !== false;
 
                         return (
@@ -1672,7 +1724,7 @@ function MessagesPanel({ messages, onChanged, token }) {
                                     <button
                                         type="button"
                                         disabled={!message.id || actionId === `delete-${message.id}`}
-                                        onClick={() => deleteMessage(message)}
+                                        onClick={() => setDeleteTarget(message)}
                                     >
                                         <Trash2 size={17} aria-hidden="true" />
                                         Delete
@@ -1684,7 +1736,7 @@ function MessagesPanel({ messages, onChanged, token }) {
                 </div>
             ) : (
                 <AdminEmptyState icon={MessageSquareText} title="No messages yet">
-                    Belum ada pesan masuk dari halaman publik.
+                    {searchQuery || visibilityFilter ? 'Tidak ada pesan yang cocok dengan filter ini.' : 'Belum ada pesan masuk dari halaman publik.'}
                 </AdminEmptyState>
             )}
         </section>
@@ -1975,39 +2027,22 @@ function createSettingsPayload(siteSettings, bestMoment, overrides = {}) {
     };
 }
 
+function matchesSearch(query, ...values) {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    if (!normalizedQuery) {
+        return true;
+    }
+
+    return values
+        .filter((value) => value !== null && value !== undefined)
+        .some((value) => String(value).toLowerCase().includes(normalizedQuery));
+}
+
 function resolveFormError(error) {
     if (error.payload?.errors) {
         return Object.values(error.payload.errors).flat().join(' ');
     }
 
     return error.message || 'Action failed. Cek input atau koneksi API.';
-}
-
-function AdminCardActions({ onDelete, onEdit }) {
-    return (
-        <div className="admin-card-actions">
-            <button type="button" title="Edit" onClick={onEdit}>
-                <Edit3 size={18} aria-hidden="true" />
-            </button>
-            <button type="button" title="Delete" onClick={onDelete}>
-                <Trash2 size={18} aria-hidden="true" />
-            </button>
-        </div>
-    );
-}
-
-function AdminFloatingActions({ onAddPhoto, onDelete, onEdit }) {
-    return (
-        <div className="admin-floating-actions" aria-label="Moment actions">
-            <button type="button" title="Edit moment" onClick={onEdit}>
-                <Edit3 size={18} aria-hidden="true" />
-            </button>
-            <button type="button" title="Add photo" onClick={onAddPhoto}>
-                <ImagePlus size={18} aria-hidden="true" />
-            </button>
-            <button type="button" title="Delete moment" onClick={onDelete}>
-                <Trash2 size={18} aria-hidden="true" />
-            </button>
-        </div>
-    );
 }

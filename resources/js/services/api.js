@@ -94,15 +94,58 @@ export function updateAdminSettings(token, data) {
     });
 }
 
-export function uploadAdminMedia(token, file, kind) {
+export function uploadAdminMedia(token, file, kind, onProgress) {
     const data = new FormData();
     data.append('kind', kind);
     data.append('file', file);
 
-    return request('/api/admin/uploads', {
-        method: 'POST',
-        token,
-        data,
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+
+        xhr.open('POST', '/api/admin/uploads');
+        xhr.setRequestHeader('Accept', 'application/json');
+
+        if (token) {
+            xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+        }
+
+        xhr.upload.addEventListener('progress', (event) => {
+            if (!event.lengthComputable) {
+                return;
+            }
+
+            onProgress?.(Math.round((event.loaded / event.total) * 100));
+        });
+
+        xhr.addEventListener('load', () => {
+            const contentType = xhr.getResponseHeader('content-type') ?? '';
+            let payload = xhr.responseText;
+
+            if (contentType.includes('application/json')) {
+                try {
+                    payload = JSON.parse(xhr.responseText || '{}');
+                } catch {
+                    payload = {};
+                }
+            }
+
+            if (xhr.status < 200 || xhr.status >= 300) {
+                const message = typeof payload === 'object' && payload?.message ? payload.message : 'Request failed';
+                const error = new Error(message);
+                error.status = xhr.status;
+                error.payload = payload;
+                reject(error);
+                return;
+            }
+
+            resolve(payload);
+        });
+
+        xhr.addEventListener('error', () => {
+            reject(new Error('Upload failed. Cek koneksi API.'));
+        });
+
+        xhr.send(data);
     });
 }
 

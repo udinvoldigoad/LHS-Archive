@@ -1,4 +1,5 @@
 import { Play } from 'lucide-react';
+import MediaPlaceholder from './MediaPlaceholder.jsx';
 import SectionHeader from './SectionHeader.jsx';
 
 export default function BestMoment({ moment }) {
@@ -9,7 +10,7 @@ export default function BestMoment({ moment }) {
                 {moment.thumbnailUrl ? (
                     <img src={moment.thumbnailUrl} alt={moment.title} />
                 ) : (
-                    <div className="archive-media-placeholder">No video thumbnail</div>
+                    <MediaPlaceholder type="video" />
                 )}
                 <div className="best-moment-vignette" aria-hidden="true" />
                 {moment.videoUrl ? (
