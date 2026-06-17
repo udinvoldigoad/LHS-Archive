@@ -20,6 +20,7 @@ import {
     Upload,
     UsersRound,
     Volume2,
+    X,
 } from 'lucide-react';
 import {
     archiveLinks as fallbackArchiveLinks,
@@ -202,6 +203,61 @@ function PanelHeader({ title, description, actionLabel, actionIcon: ActionIcon =
                     {actionLabel}
                 </button>
             ) : null}
+        </div>
+    );
+}
+
+function AdminModal({ children, eyebrow, isOpen, onClose, title }) {
+    useEffect(() => {
+        if (!isOpen) {
+            return undefined;
+        }
+
+        const previousBodyOverflow = document.body.style.overflow;
+        const previousHtmlOverflow = document.documentElement.style.overflow;
+
+        document.body.style.overflow = 'hidden';
+        document.documentElement.style.overflow = 'hidden';
+
+        function closeOnEscape(event) {
+            if (event.key === 'Escape') {
+                onClose?.();
+            }
+        }
+
+        window.addEventListener('keydown', closeOnEscape);
+
+        return () => {
+            document.body.style.overflow = previousBodyOverflow;
+            document.documentElement.style.overflow = previousHtmlOverflow;
+            window.removeEventListener('keydown', closeOnEscape);
+        };
+    }, [isOpen]);
+
+    if (!isOpen) {
+        return null;
+    }
+
+    function closeFromBackdrop(event) {
+        if (event.target === event.currentTarget) {
+            onClose?.();
+        }
+    }
+
+    return (
+        <div className="admin-modal-backdrop" onMouseDown={closeFromBackdrop}>
+            <section aria-modal="true" className="admin-modal" role="dialog">
+                <header className="admin-modal-header">
+                    <div>
+                        {eyebrow ? <p className="archive-kicker">{eyebrow}</p> : null}
+                        <h3>{title}</h3>
+                    </div>
+                    <button className="admin-modal-close" type="button" title="Close modal" onClick={onClose}>
+                        <X size={20} aria-hidden="true" />
+                    </button>
+                </header>
+                <div className="admin-modal-body">{children}</div>
+            </section>
         </div>
     );
 }
@@ -426,18 +482,13 @@ function LinksPanel({ categories, links, onChanged, token }) {
                 onAction={openCreateForm}
             />
 
-            {formStatus !== 'idle' ? (
+            <AdminModal
+                eyebrow={isEditing ? 'Edit Link' : 'New Link'}
+                isOpen={formStatus !== 'idle'}
+                onClose={closeForm}
+                title={isEditing ? editingLink.title : 'Tambah Link Archive'}
+            >
                 <form className="admin-link-form" onSubmit={submitForm}>
-                    <div className="admin-link-form-heading">
-                        <div>
-                            <p className="archive-kicker">{isEditing ? 'Edit Link' : 'New Link'}</p>
-                            <h3>{isEditing ? editingLink.title : 'Tambah Link Archive'}</h3>
-                        </div>
-                        <button type="button" onClick={closeForm}>
-                            Cancel
-                        </button>
-                    </div>
-
                     <div className="admin-link-form-grid">
                         <label>
                             Title
@@ -522,9 +573,9 @@ function LinksPanel({ categories, links, onChanged, token }) {
                         </button>
                     </div>
                 </form>
-            ) : null}
+            </AdminModal>
 
-            {panelError ? <p className="admin-form-error">{panelError}</p> : null}
+            {panelError && formStatus === 'idle' ? <p className="admin-form-error">{panelError}</p> : null}
 
             <div className="admin-link-grid">
                 {links.map((link, index) => (
@@ -563,6 +614,7 @@ function MomentsPanel({ moments, onChanged, token }) {
     const isEditingPhoto = Boolean(editingPhoto);
 
     function openCreateMomentForm() {
+        closePhotoForm();
         setEditingMoment(null);
         setMomentForm(createEmptyMomentForm());
         setMomentFormStatus('editing');
@@ -570,6 +622,7 @@ function MomentsPanel({ moments, onChanged, token }) {
     }
 
     function openEditMomentForm(moment) {
+        closePhotoForm();
         setEditingMoment(moment);
         setMomentForm({
             title: moment.title ?? '',
@@ -642,6 +695,7 @@ function MomentsPanel({ moments, onChanged, token }) {
     }
 
     function openCreatePhotoForm(moment) {
+        closeMomentForm();
         setPhotoMoment(moment);
         setEditingPhoto(null);
         setPhotoForm(createEmptyPhotoForm(moment));
@@ -650,6 +704,7 @@ function MomentsPanel({ moments, onChanged, token }) {
     }
 
     function openEditPhotoForm(moment, photo) {
+        closeMomentForm();
         setPhotoMoment(moment);
         setEditingPhoto(photo);
         setPhotoForm({
@@ -734,20 +789,17 @@ function MomentsPanel({ moments, onChanged, token }) {
                 onAction={openCreateMomentForm}
             />
 
-            {panelError ? <p className="admin-form-error">{panelError}</p> : null}
+            {panelError && momentFormStatus === 'idle' && photoFormStatus === 'idle' ? (
+                <p className="admin-form-error">{panelError}</p>
+            ) : null}
 
-            {momentFormStatus !== 'idle' ? (
+            <AdminModal
+                eyebrow={isEditingMoment ? 'Edit Moment' : 'New Moment'}
+                isOpen={momentFormStatus !== 'idle'}
+                onClose={closeMomentForm}
+                title={isEditingMoment ? editingMoment.title : 'Tambah Polaroid Moment'}
+            >
                 <form className="admin-link-form" onSubmit={submitMomentForm}>
-                    <div className="admin-link-form-heading">
-                        <div>
-                            <p className="archive-kicker">{isEditingMoment ? 'Edit Moment' : 'New Moment'}</p>
-                            <h3>{isEditingMoment ? editingMoment.title : 'Tambah Polaroid Moment'}</h3>
-                        </div>
-                        <button type="button" onClick={closeMomentForm}>
-                            Cancel
-                        </button>
-                    </div>
-
                     <div className="admin-link-form-grid">
                         <label>
                             Title
@@ -782,6 +834,8 @@ function MomentsPanel({ moments, onChanged, token }) {
                         </label>
                     </div>
 
+                    {panelError ? <p className="admin-form-error">{panelError}</p> : null}
+
                     <div className="admin-link-form-actions">
                         <button className="admin-action-button" type="submit" disabled={momentFormStatus === 'saving'}>
                             <Save size={18} aria-hidden="true" />
@@ -789,20 +843,15 @@ function MomentsPanel({ moments, onChanged, token }) {
                         </button>
                     </div>
                 </form>
-            ) : null}
+            </AdminModal>
 
-            {photoFormStatus !== 'idle' ? (
+            <AdminModal
+                eyebrow={isEditingPhoto ? 'Edit Photo' : 'New Photo'}
+                isOpen={photoFormStatus !== 'idle'}
+                onClose={closePhotoForm}
+                title={photoMoment?.title ?? 'Foto Moment'}
+            >
                 <form className="admin-link-form" onSubmit={submitPhotoForm}>
-                    <div className="admin-link-form-heading">
-                        <div>
-                            <p className="archive-kicker">{isEditingPhoto ? 'Edit Photo' : 'New Photo'}</p>
-                            <h3>{photoMoment?.title ?? 'Foto Moment'}</h3>
-                        </div>
-                        <button type="button" onClick={closePhotoForm}>
-                            Cancel
-                        </button>
-                    </div>
-
                     <div className="admin-link-form-grid">
                         <label>
                             Image URL
@@ -847,6 +896,8 @@ function MomentsPanel({ moments, onChanged, token }) {
                         </label>
                     </div>
 
+                    {panelError ? <p className="admin-form-error">{panelError}</p> : null}
+
                     {photoMoment?.photos?.length ? (
                         <div className="admin-photo-manager-list">
                             {photoMoment.photos.map((photo) => (
@@ -872,7 +923,7 @@ function MomentsPanel({ moments, onChanged, token }) {
                         </button>
                     </div>
                 </form>
-            ) : null}
+            </AdminModal>
 
             <div className="admin-polaroid-grid">
                 {moments.map((moment, index) => (
@@ -1070,20 +1121,15 @@ function MembersPanel({ members, onChanged, token }) {
                 onAction={openCreateForm}
             />
 
-            {panelError ? <p className="admin-form-error">{panelError}</p> : null}
+            {panelError && formStatus === 'idle' ? <p className="admin-form-error">{panelError}</p> : null}
 
-            {formStatus !== 'idle' ? (
+            <AdminModal
+                eyebrow={isEditing ? 'Edit Member' : 'New Member'}
+                isOpen={formStatus !== 'idle'}
+                onClose={closeForm}
+                title={isEditing ? editingMember.name : 'Tambah Archived Human'}
+            >
                 <form className="admin-link-form" onSubmit={submitForm}>
-                    <div className="admin-link-form-heading">
-                        <div>
-                            <p className="archive-kicker">{isEditing ? 'Edit Member' : 'New Member'}</p>
-                            <h3>{isEditing ? editingMember.name : 'Tambah Archived Human'}</h3>
-                        </div>
-                        <button type="button" onClick={closeForm}>
-                            Cancel
-                        </button>
-                    </div>
-
                     <div className="admin-link-form-grid">
                         <label>
                             Name
@@ -1168,6 +1214,8 @@ function MembersPanel({ members, onChanged, token }) {
                         </label>
                     </div>
 
+                    {panelError ? <p className="admin-form-error">{panelError}</p> : null}
+
                     <div className="admin-link-form-actions">
                         <button className="admin-action-button" type="submit" disabled={formStatus === 'saving'}>
                             <Save size={18} aria-hidden="true" />
@@ -1175,7 +1223,7 @@ function MembersPanel({ members, onChanged, token }) {
                         </button>
                     </div>
                 </form>
-            ) : null}
+            </AdminModal>
 
             <div className="admin-member-grid">
                 {members.map((member, index) => (
