@@ -10,8 +10,26 @@ use RuntimeException;
 
 class ArchiveImageOptimizer
 {
+    public static function canOptimize(string $mimeType): bool
+    {
+        return class_exists(GdImage::class)
+            && function_exists('imagecreatetruecolor')
+            && function_exists('imagewebp')
+            && match ($mimeType) {
+                'image/jpeg' => function_exists('imagecreatefromjpeg'),
+                'image/png' => function_exists('imagecreatefrompng'),
+                'image/webp' => function_exists('imagecreatefromwebp'),
+                'image/gif' => function_exists('imagecreatefromgif'),
+                default => false,
+            };
+    }
+
     public static function store(UploadedFile $file, bool $thumbnailOnly = false): array
     {
+        if (! self::canOptimize((string) $file->getMimeType())) {
+            throw new RuntimeException('Image optimization is not available on this server.');
+        }
+
         $source = self::sourceImage($file);
         $format = self::format();
         $extension = $format === 'avif' ? 'avif' : 'webp';

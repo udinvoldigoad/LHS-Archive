@@ -175,6 +175,10 @@ function resolveUploadError(error) {
         return Object.values(error.payload.errors).flat().join(' ');
     }
 
+    if (error.status === 502) {
+        return error.message || 'Storage upload gagal. Cek konfigurasi Supabase di Railway.';
+    }
+
     return error.message || 'Upload failed. Cek file dan koneksi API.';
 }
 

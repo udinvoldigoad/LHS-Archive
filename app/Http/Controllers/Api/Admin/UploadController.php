@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Support\ArchiveImageOptimizer;
 use App\Support\ArchiveMedia;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Throwable;
 
 class UploadController extends Controller
 {
@@ -27,16 +29,34 @@ class UploadController extends Controller
         $file = $request->file('file');
 
         if ($kind === 'image') {
-            return response()->json([
-                'kind' => $kind,
-                'name' => $file->getClientOriginalName(),
-                'original_mime_type' => $file->getMimeType(),
-                'original_size' => $file->getSize(),
-                ...ArchiveImageOptimizer::store($file, ($validated['variant'] ?? null) === 'thumbnail'),
-            ], 201);
+            try {
+                return response()->json([
+                    'kind' => $kind,
+                    'name' => $file->getClientOriginalName(),
+                    'original_mime_type' => $file->getMimeType(),
+                    'original_size' => $file->getSize(),
+                    ...ArchiveImageOptimizer::store($file, ($validated['variant'] ?? null) === 'thumbnail'),
+                ], 201);
+            } catch (Throwable) {
+                return response()->json([
+                    'kind' => $kind,
+                    'name' => $file->getClientOriginalName(),
+                    'original_mime_type' => $file->getMimeType(),
+                    'original_size' => $file->getSize(),
+                    ...$this->storeOriginalImage($file),
+                    'optimized' => false,
+                    'message' => 'Image uploaded without optimization because the server image optimizer is unavailable.',
+                ], 201);
+            }
         }
 
-        $path = Storage::disk(ArchiveMedia::disk())->putFile('archive/'.$kind.'s', $file);
+        try {
+            $path = Storage::disk(ArchiveMedia::disk())->putFile('archive/'.$kind.'s', $file);
+        } catch (Throwable) {
+            return response()->json([
+                'message' => 'Upload storage failed. Check Supabase storage variables and bucket permissions.',
+            ], 502);
+        }
 
         return response()->json([
             'kind' => $kind,
@@ -55,5 +75,31 @@ class UploadController extends Controller
             'video' => ['required', 'file', 'mimes:mp4,webm,mov', 'max:30720'],
             'audio' => ['required', 'file', 'mimes:mp3,wav,ogg,m4a', 'max:2048'],
         };
+    }
+
+    private function storeOriginalImage(UploadedFile $file): array
+    {
+        try {
+            $path = Storage::disk(ArchiveMedia::disk())->putFile('archive/images', $file);
+        } catch (Throwable) {
+            abort(response()->json([
+                'message' => 'Upload storage failed. Check Supabase storage variables and bucket permissions.',
+            ], 502));
+        }
+
+        $url = ArchiveMedia::url($path);
+
+        return [
+            'path' => $path,
+            'url' => $url,
+            'thumbnail_path' => $path,
+            'thumbnail_url' => $url,
+            'mime_type' => $file->getMimeType(),
+            'extension' => $file->extension(),
+            'width' => null,
+            'height' => null,
+            'thumbnail_width' => null,
+            'thumbnail_height' => null,
+        ];
     }
 }
