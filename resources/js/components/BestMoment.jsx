@@ -22,7 +22,7 @@ export default function BestMoment({ moment }) {
                         title={moment.title}
                     />
                 ) : moment.thumbnailUrl ? (
-                    <img className="best-moment-cover" src={moment.thumbnailUrl} alt={moment.title} />
+                    <img className="best-moment-cover" src={moment.thumbnailUrl} alt={moment.title} loading="lazy" decoding="async" />
                 ) : hasVideo ? (
                     <video
                         className="best-moment-video best-moment-preview-video"

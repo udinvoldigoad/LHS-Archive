@@ -62,7 +62,7 @@ export default function AdminLogin({ onLogin }) {
                 <div className="admin-login-polaroids" aria-hidden="true">
                     {heroPhotos.slice(0, 3).map((photo, index) => (
                         <div className={`admin-login-polaroid admin-login-polaroid-${index + 1}`} key={photo.src}>
-                            <img src={photo.src} alt="" />
+                            <img src={photo.src} alt="" decoding="async" />
                         </div>
                     ))}
                 </div>

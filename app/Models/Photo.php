@@ -10,6 +10,7 @@ class Photo extends Model
     protected $fillable = [
         'moment_id',
         'image_url',
+        'thumbnail_url',
         'caption',
         'rotation',
         'sort_order',

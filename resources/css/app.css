@@ -113,6 +113,18 @@ img {
     min-height: 100vh;
 }
 
+.route-loading {
+    display: grid;
+    min-height: 100vh;
+    place-items: center;
+    background: var(--surface);
+    color: var(--primary-container);
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
 .site-shell {
     min-height: 100vh;
     width: 100%;
@@ -1044,6 +1056,28 @@ img {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 18px;
+}
+
+.message-wall-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+}
+
+.message-wall-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.message-wall-actions span {
+    color: var(--on-surface-variant);
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
 }
 
 .sticky-note {

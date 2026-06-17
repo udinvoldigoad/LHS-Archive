@@ -12,6 +12,7 @@ class Member extends Model
         'role',
         'quote',
         'photo_url',
+        'thumbnail_url',
         'instagram_url',
         'fun_fact',
         'sort_order',

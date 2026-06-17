@@ -16,7 +16,7 @@ export default function Hero({ settings, photos }) {
             <div className="hero-polaroids" aria-hidden="true">
                 {photos.map((photo, index) => (
                     <div className={`hero-polaroid hero-polaroid-${index + 1}`} key={`${photo.src}-${index}`}>
-                        <img src={photo.src} alt="" />
+                        <img src={photo.src} alt="" decoding="async" fetchPriority={index < 2 ? 'high' : 'auto'} />
                     </div>
                 ))}
             </div>

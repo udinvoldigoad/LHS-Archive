@@ -3,11 +3,16 @@ import MediaPlaceholder from './MediaPlaceholder.jsx';
 
 export default function MemberCard({ member, index, onOpen }) {
     const rotation = index % 3 === 0 ? '-1deg' : index % 3 === 1 ? '0.8deg' : '1.4deg';
+    const photoUrl = member.thumbnailUrl || member.photoUrl;
 
     return (
         <article className="member-card" style={{ '--tilt': rotation }}>
             <button type="button" onClick={onOpen}>
-                {member.photoUrl ? <img src={member.photoUrl} alt={member.name} /> : <MediaPlaceholder type="member" />}
+                {photoUrl ? (
+                    <img src={photoUrl} alt={member.name} loading="lazy" decoding="async" />
+                ) : (
+                    <MediaPlaceholder type="member" />
+                )}
                 <span className="member-card-role">Archived Human</span>
                 <h3>{member.name}</h3>
                 <blockquote>{member.quote}</blockquote>

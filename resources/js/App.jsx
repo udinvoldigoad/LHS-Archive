@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import Home from './pages/Home.jsx';
-import AdminLogin from './pages/AdminLogin.jsx';
-import AdminDashboard from './pages/AdminDashboard.jsx';
 import { clearAdminToken, logoutAdmin, readAdminToken, storeAdminToken } from './services/api.js';
+
+const AdminLogin = lazy(() => import('./pages/AdminLogin.jsx'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard.jsx'));
 
 export default function App() {
     const [adminToken, setAdminToken] = useState(readAdminToken);
@@ -25,10 +26,14 @@ export default function App() {
     }
 
     if (window.location.pathname.startsWith('/admin')) {
-        return adminToken ? (
-            <AdminDashboard token={adminToken} onLogout={handleAdminLogout} />
-        ) : (
-            <AdminLogin onLogin={handleAdminLogin} />
+        return (
+            <Suspense fallback={<div className="route-loading">Loading admin...</div>}>
+                {adminToken ? (
+                    <AdminDashboard token={adminToken} onLogout={handleAdminLogout} />
+                ) : (
+                    <AdminLogin onLogin={handleAdminLogin} />
+                )}
+            </Suspense>
         );
     }
 

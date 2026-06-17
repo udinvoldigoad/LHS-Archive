@@ -104,7 +104,9 @@ class ArchiveApiTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('kind', 'image')
             ->assertJson(fn ($json) => $json
+                ->where('mime_type', 'image/webp')
                 ->where('url', fn (string $url) => str_starts_with($url, '/storage/archive/images/'))
+                ->where('thumbnail_url', fn (string $url) => str_starts_with($url, '/storage/archive/thumbnails/'))
                 ->etc()
             );
     }
@@ -142,6 +144,7 @@ class ArchiveApiTest extends TestCase
     {
         Storage::fake('public');
         Storage::disk('public')->put('archive/images/moment.jpg', 'image');
+        Storage::disk('public')->put('archive/thumbnails/moment.webp', 'thumbnail');
 
         $moment = Moment::create([
             'title' => 'Uploaded Moment',
@@ -150,6 +153,7 @@ class ArchiveApiTest extends TestCase
         Photo::create([
             'moment_id' => $moment->id,
             'image_url' => '/storage/archive/images/moment.jpg',
+            'thumbnail_url' => '/storage/archive/thumbnails/moment.webp',
         ]);
 
         $this->withAdminToken()
@@ -159,6 +163,7 @@ class ArchiveApiTest extends TestCase
         $this->assertDatabaseMissing('moments', ['id' => $moment->id]);
         $this->assertDatabaseMissing('photos', ['moment_id' => $moment->id]);
         Storage::disk('public')->assertMissing('archive/images/moment.jpg');
+        Storage::disk('public')->assertMissing('archive/thumbnails/moment.webp');
     }
 
     private function withAdminToken(): self

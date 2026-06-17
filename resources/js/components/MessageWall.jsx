@@ -3,6 +3,8 @@ import { Send } from 'lucide-react';
 import SectionHeader from './SectionHeader.jsx';
 import EmptyArchiveState from './EmptyArchiveState.jsx';
 
+const messageBatchSize = 10;
+
 export default function MessageWall({ initialMessages, onSubmitMessage }) {
     const [notes, setNotes] = useState(initialMessages);
     const [name, setName] = useState('');
@@ -10,9 +12,13 @@ export default function MessageWall({ initialMessages, onSubmitMessage }) {
     const [website, setWebsite] = useState('');
     const [status, setStatus] = useState('idle');
     const [isMessageFocused, setIsMessageFocused] = useState(false);
+    const [visibleCount, setVisibleCount] = useState(messageBatchSize);
+    const visibleNotes = notes.slice(0, visibleCount);
+    const hasMoreMessages = visibleCount < notes.length;
 
     useEffect(() => {
         setNotes(initialMessages);
+        setVisibleCount(messageBatchSize);
     }, [initialMessages]);
 
     async function handleSubmit(event) {
@@ -101,13 +107,27 @@ export default function MessageWall({ initialMessages, onSubmitMessage }) {
                     {status === 'error' ? <p className="form-status-error">Pesan gagal dikirim. Coba lagi sebentar.</p> : null}
                 </form>
                 {notes.length ? (
-                    <div className="message-wall">
-                        {notes.map((note, index) => (
-                            <article className="sticky-note" style={{ '--tilt': note.rotation }} key={`${note.id ?? note.name}-${index}`}>
-                                <p>{note.message}</p>
-                                <span>{note.name}</span>
-                            </article>
-                        ))}
+                    <div className="message-wall-wrap">
+                        <div className="message-wall">
+                            {visibleNotes.map((note, index) => (
+                                <article className="sticky-note" style={{ '--tilt': note.rotation }} key={`${note.id ?? note.name}-${index}`}>
+                                    <p>{note.message}</p>
+                                    <span>{note.name}</span>
+                                </article>
+                            ))}
+                        </div>
+                        {hasMoreMessages ? (
+                            <div className="message-wall-actions">
+                                <button
+                                    className="archive-button archive-button-secondary"
+                                    type="button"
+                                    onClick={() => setVisibleCount((current) => current + messageBatchSize)}
+                                >
+                                    Load More
+                                </button>
+                                <span>{visibleNotes.length} / {notes.length} pesan</span>
+                            </div>
+                        ) : null}
                     </div>
                 ) : (
                     <EmptyArchiveState title="Belum ada pesan tampil">

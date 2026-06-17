@@ -13,5 +13,13 @@ return [
         'public_url' => env('SUPABASE_PUBLIC_URL'),
         'bucket' => env('SUPABASE_STORAGE_BUCKET', env('AWS_BUCKET')),
         'allow_external_urls' => (bool) env('ARCHIVE_ALLOW_EXTERNAL_MEDIA_URLS', false),
+        'image_format' => env('ARCHIVE_IMAGE_FORMAT', 'webp'),
+        'image_quality' => (int) env('ARCHIVE_IMAGE_QUALITY', 82),
+        'image_max_dimension' => (int) env('ARCHIVE_IMAGE_MAX_DIMENSION', 1600),
+        'thumbnail_max_dimension' => (int) env('ARCHIVE_THUMBNAIL_MAX_DIMENSION', 640),
+    ],
+
+    'cache' => [
+        'public_archive_ttl_seconds' => (int) env('ARCHIVE_PUBLIC_CACHE_TTL_SECONDS', 300),
     ],
 ];

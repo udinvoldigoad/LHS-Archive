@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Moment;
+use App\Support\ArchiveCache;
 use App\Support\ArchiveMedia;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -20,8 +21,10 @@ class MomentController extends Controller
     {
         $validated = $this->validateMoment($request);
         $validated['slug'] = $validated['slug'] ?? Str::slug($validated['title']);
+        $moment = Moment::create($validated)->load('photos');
+        ArchiveCache::forgetPublic();
 
-        return response()->json(Moment::create($validated)->load('photos'), 201);
+        return response()->json($moment, 201);
     }
 
     public function show(Moment $moment)
@@ -34,6 +37,7 @@ class MomentController extends Controller
         $validated = $this->validateMoment($request, $moment);
         $validated['slug'] = $validated['slug'] ?? Str::slug($validated['title']);
         $moment->update($validated);
+        ArchiveCache::forgetPublic();
 
         return response()->json($moment->load('photos'));
     }
@@ -44,9 +48,11 @@ class MomentController extends Controller
 
         foreach ($moment->photos as $photo) {
             ArchiveMedia::delete($photo->image_url);
+            ArchiveMedia::delete($photo->thumbnail_url);
         }
 
         $moment->delete();
+        ArchiveCache::forgetPublic();
 
         return response()->json(['message' => 'Moment deleted']);
     }

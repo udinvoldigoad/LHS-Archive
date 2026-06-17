@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Support\ArchiveImageOptimizer;
 use App\Support\ArchiveMedia;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -14,6 +15,7 @@ class UploadController extends Controller
     {
         $validated = $request->validate([
             'kind' => ['required', Rule::in(['image', 'video', 'audio'])],
+            'variant' => ['nullable', Rule::in(['thumbnail'])],
         ]);
 
         $kind = $validated['kind'];
@@ -23,6 +25,17 @@ class UploadController extends Controller
         ]);
 
         $file = $request->file('file');
+
+        if ($kind === 'image') {
+            return response()->json([
+                'kind' => $kind,
+                'name' => $file->getClientOriginalName(),
+                'original_mime_type' => $file->getMimeType(),
+                'original_size' => $file->getSize(),
+                ...ArchiveImageOptimizer::store($file, ($validated['variant'] ?? null) === 'thumbnail'),
+            ], 201);
+        }
+
         $path = Storage::disk(ArchiveMedia::disk())->putFile('archive/'.$kind.'s', $file);
 
         return response()->json([

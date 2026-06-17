@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Link;
+use App\Support\ArchiveCache;
 use App\Support\ArchiveMedia;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -19,6 +20,7 @@ class LinkController extends Controller
     public function store(Request $request)
     {
         $link = Link::create($this->linkData($request));
+        ArchiveCache::forgetPublic();
 
         return response()->json($link->load('category'), 201);
     }
@@ -35,6 +37,7 @@ class LinkController extends Controller
 
         $link->update($validated);
         ArchiveMedia::deleteIfChanged($oldThumbnailUrl, $link->thumbnail_url);
+        ArchiveCache::forgetPublic();
 
         return response()->json($link->load('category'));
     }
@@ -43,6 +46,7 @@ class LinkController extends Controller
     {
         ArchiveMedia::delete($link->thumbnail_url);
         $link->delete();
+        ArchiveCache::forgetPublic();
 
         return response()->json(['message' => 'Link deleted']);
     }

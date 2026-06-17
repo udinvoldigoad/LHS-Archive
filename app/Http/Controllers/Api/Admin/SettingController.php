@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
+use App\Support\ArchiveCache;
 use App\Support\ArchiveMedia;
 use Illuminate\Http\Request;
 
@@ -35,6 +36,7 @@ class SettingController extends Controller
         $settings->update($validated);
         ArchiveMedia::deleteIfChanged($oldVideoUrl, $settings->best_moment_video_url);
         ArchiveMedia::deleteIfChanged($oldMusicUrl, $settings->background_music_url);
+        ArchiveCache::forgetPublic();
 
         return response()->json($settings);
     }

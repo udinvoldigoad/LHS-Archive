@@ -9,21 +9,24 @@ use App\Models\Member;
 use App\Models\Message;
 use App\Models\Moment;
 use App\Models\Setting;
+use App\Support\ArchiveCache;
 use Illuminate\Http\Request;
 
 class PublicArchiveController extends Controller
 {
     public function archive()
     {
-        return response()->json([
+        $payload = ArchiveCache::rememberPublic(fn () => [
             'settings' => $this->settingsData(),
             'bestMoment' => $this->bestMomentData(),
-            'categories' => Category::orderBy('name')->get(),
-            'links' => $this->linksData(),
-            'moments' => $this->momentsData(),
-            'members' => $this->membersData(),
-            'messages' => $this->messagesData(),
+            'categories' => Category::orderBy('name')->get()->toArray(),
+            'links' => $this->linksData()->values()->all(),
+            'moments' => $this->momentsData()->values()->all(),
+            'members' => $this->membersData()->values()->all(),
+            'messages' => $this->messagesData()->values()->all(),
         ]);
+
+        return response()->json($payload);
     }
 
     public function settings()
@@ -74,6 +77,7 @@ class PublicArchiveController extends Controller
         unset($validated['website']);
 
         $message = Message::create($validated + ['is_visible' => true]);
+        ArchiveCache::forgetPublic();
 
         return response()->json($message, 201);
     }
@@ -148,12 +152,14 @@ class PublicArchiveController extends Controller
             'slug' => $moment->slug,
             'caption' => $moment->photos->first()?->caption ?? $moment->description,
             'imageUrl' => $moment->photos->first()?->image_url,
+            'thumbnailUrl' => $moment->photos->first()?->thumbnail_url ?? $moment->photos->first()?->image_url,
             'rotation' => $moment->photos->first()?->rotation ?? $this->rotationFor($moment->id),
             'photos' => $moment->photos->map(fn ($photo) => [
                 'id' => $photo->id,
                 'title' => $moment->title,
                 'caption' => $photo->caption,
                 'imageUrl' => $photo->image_url,
+                'thumbnailUrl' => $photo->thumbnail_url ?? $photo->image_url,
                 'rotation' => $photo->rotation,
                 'sortOrder' => $photo->sort_order,
             ]),
@@ -171,6 +177,7 @@ class PublicArchiveController extends Controller
                 'nickname' => $member->nickname,
                 'quote' => $member->quote,
                 'photoUrl' => $member->photo_url,
+                'thumbnailUrl' => $member->thumbnail_url ?? $member->photo_url,
                 'instagramUrl' => $member->instagram_url,
                 'sortOrder' => $member->sort_order,
             ]);

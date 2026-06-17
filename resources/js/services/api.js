@@ -94,10 +94,14 @@ export function updateAdminSettings(token, data) {
     });
 }
 
-export function uploadAdminMedia(token, file, kind, onProgress) {
+export function uploadAdminMedia(token, file, kind, onProgress, options = {}) {
     const data = new FormData();
     data.append('kind', kind);
     data.append('file', file);
+
+    if (options.variant) {
+        data.append('variant', options.variant);
+    }
 
     return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();

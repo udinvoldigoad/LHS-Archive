@@ -455,6 +455,8 @@ function LinksPanel({ links, onChanged, token }) {
                                 currentUrl={form.thumbnail_url}
                                 kind="image"
                                 label="Upload thumbnail"
+                                preferThumbnail
+                                thumbnailOnly
                                 token={token}
                                 onClear={() => setForm((current) => ({ ...current, thumbnail_url: '' }))}
                                 onUploaded={(url) => setForm((current) => ({ ...current, thumbnail_url: url }))}
@@ -515,7 +517,7 @@ function LinksPanel({ links, onChanged, token }) {
                         >
                             <div className="admin-link-thumb">
                                 {link.thumbnailUrl ? (
-                                    <img src={link.thumbnailUrl} alt={link.title} />
+                                    <img src={link.thumbnailUrl} alt={link.title} loading="lazy" decoding="async" />
                                 ) : (
                                     <div className="admin-empty-photo">
                                         <Link2 size={34} aria-hidden="true" />
@@ -669,6 +671,7 @@ function MomentsPanel({ moments, onChanged, token }) {
         setPhotoForm({
             moment_id: String(moment.id),
             image_url: photo.imageUrl ?? '',
+            thumbnail_url: photo.thumbnailUrl ?? '',
             caption: photo.caption ?? '',
             rotation: photo.rotation ?? '',
             sort_order: String(photo.sortOrder ?? 0),
@@ -707,6 +710,7 @@ function MomentsPanel({ moments, onChanged, token }) {
         const payload = {
             moment_id: Number(photoForm.moment_id),
             image_url: photoForm.image_url.trim(),
+            thumbnail_url: photoForm.thumbnail_url.trim() || null,
             caption: photoForm.caption.trim() || null,
             rotation: photoForm.rotation.trim() || null,
             sort_order: Number(photoForm.sort_order || 0),
@@ -813,11 +817,18 @@ function MomentsPanel({ moments, onChanged, token }) {
                             <span className="admin-field-label">Photo File</span>
                             <UploadField
                                 accept="image/jpeg,image/png,image/webp,image/gif"
-                                currentUrl={photoForm.image_url}
+                                currentUrl={photoForm.thumbnail_url || photoForm.image_url}
                                 kind="image"
                                 label="Upload photo"
                                 token={token}
-                                onUploaded={(url) => setPhotoForm((current) => ({ ...current, image_url: url }))}
+                                onClear={() => setPhotoForm((current) => ({ ...current, image_url: '', thumbnail_url: '' }))}
+                                onUploaded={(url, media) =>
+                                    setPhotoForm((current) => ({
+                                        ...current,
+                                        image_url: media?.url ?? url,
+                                        thumbnail_url: media?.thumbnail_url ?? url,
+                                    }))
+                                }
                             />
                         </div>
                         <label>
@@ -849,7 +860,7 @@ function MomentsPanel({ moments, onChanged, token }) {
                         <div className="admin-photo-manager-list">
                             {photoMoment.photos.map((photo) => (
                                 <article className="admin-photo-manager-item" key={photo.id}>
-                                    <img src={photo.imageUrl} alt={photo.caption || photoMoment.title} />
+                                    <img src={photo.thumbnailUrl || photo.imageUrl} alt={photo.caption || photoMoment.title} loading="lazy" decoding="async" />
                                     <div>
                                         <strong>{photo.caption || 'No caption yet'}</strong>
                                         <span>{photo.rotation || '0deg'} / order {photo.sortOrder ?? 0}</span>
@@ -895,8 +906,8 @@ function MomentsPanel({ moments, onChanged, token }) {
                             style={{ '--tilt': moment.rotation }}
                         >
                             <div className="admin-polaroid-photo">
-                                {moment.imageUrl ? (
-                                    <img src={moment.imageUrl} alt={moment.title} />
+                                {moment.thumbnailUrl || moment.imageUrl ? (
+                                    <img src={moment.thumbnailUrl || moment.imageUrl} alt={moment.title} loading="lazy" decoding="async" />
                                 ) : (
                                     <div className="admin-empty-photo">
                                         <Camera size={42} aria-hidden="true" />
@@ -1036,7 +1047,7 @@ function VideoPanel({ bestMoment, onChanged, siteSettings, token }) {
                         {form.best_moment_video_url ? (
                             <video src={form.best_moment_video_url} controls muted preload="metadata" title={previewTitle} />
                         ) : (
-                            <img src={bestMoment.thumbnailUrl} alt={bestMoment.title} />
+                            <img src={bestMoment.thumbnailUrl} alt={bestMoment.title} loading="lazy" decoding="async" />
                         )}
                         <button type="button" title="Preview video">
                             <Clapperboard size={32} aria-hidden="true" />
@@ -1080,6 +1091,7 @@ function MembersPanel({ members, onChanged, token }) {
             nickname: member.nickname ?? '',
             quote: member.quote ?? '',
             photo_url: member.photoUrl ?? '',
+            thumbnail_url: member.thumbnailUrl ?? '',
             instagram_url: member.instagramUrl ?? '',
             sort_order: String(member.sortOrder ?? 0),
         });
@@ -1112,6 +1124,7 @@ function MembersPanel({ members, onChanged, token }) {
             nickname: form.nickname.trim() || null,
             quote: form.quote.trim() || null,
             photo_url: form.photo_url.trim() || null,
+            thumbnail_url: form.thumbnail_url.trim() || null,
             instagram_url: form.instagram_url.trim() || null,
             sort_order: Number(form.sort_order || 0),
         };
@@ -1204,12 +1217,18 @@ function MembersPanel({ members, onChanged, token }) {
                             <span className="admin-field-label">Photo File</span>
                             <UploadField
                                 accept="image/jpeg,image/png,image/webp,image/gif"
-                                currentUrl={form.photo_url}
+                                currentUrl={form.thumbnail_url || form.photo_url}
                                 kind="image"
                                 label="Upload member photo"
                                 token={token}
-                                onClear={() => setForm((current) => ({ ...current, photo_url: '' }))}
-                                onUploaded={(url) => setForm((current) => ({ ...current, photo_url: url }))}
+                                onClear={() => setForm((current) => ({ ...current, photo_url: '', thumbnail_url: '' }))}
+                                onUploaded={(url, media) =>
+                                    setForm((current) => ({
+                                        ...current,
+                                        photo_url: media?.url ?? url,
+                                        thumbnail_url: media?.thumbnail_url ?? url,
+                                    }))
+                                }
                             />
                         </div>
                         <label className="admin-link-form-wide">
@@ -1263,8 +1282,8 @@ function MembersPanel({ members, onChanged, token }) {
                             key={member.id ?? member.name}
                             style={{ '--tilt': index % 2 === 0 ? '-0.6deg' : '0.7deg' }}
                         >
-                            {member.photoUrl ? (
-                                <img src={member.photoUrl} alt={member.name} />
+                            {member.thumbnailUrl || member.photoUrl ? (
+                                <img src={member.thumbnailUrl || member.photoUrl} alt={member.name} loading="lazy" decoding="async" />
                             ) : (
                                 <div className="admin-member-empty-photo">
                                     <UsersRound size={38} aria-hidden="true" />
@@ -1512,6 +1531,7 @@ function mapAdminDashboard(dashboard) {
             slug: moment.slug,
             caption: firstPhoto.caption ?? moment.description,
             imageUrl: firstPhoto.image_url,
+            thumbnailUrl: firstPhoto.thumbnail_url ?? firstPhoto.image_url,
             rotation: firstPhoto.rotation ?? (index % 2 === 0 ? '-1deg' : '1deg'),
             photoCount: photos.length,
             photos: photos.map((photo) => ({
@@ -1519,6 +1539,7 @@ function mapAdminDashboard(dashboard) {
                 title: moment.title,
                 caption: photo.caption,
                 imageUrl: photo.image_url,
+                thumbnailUrl: photo.thumbnail_url ?? photo.image_url,
                 rotation: photo.rotation,
                 sortOrder: photo.sort_order,
             })),
@@ -1531,6 +1552,7 @@ function mapAdminDashboard(dashboard) {
         nickname: member.nickname,
         quote: member.quote,
         photoUrl: member.photo_url,
+        thumbnailUrl: member.thumbnail_url ?? member.photo_url,
         instagramUrl: member.instagram_url,
         sortOrder: member.sort_order,
     }));
@@ -1601,6 +1623,7 @@ function createEmptyPhotoForm(moment = null) {
     return {
         moment_id: moment?.id ? String(moment.id) : '',
         image_url: '',
+        thumbnail_url: '',
         caption: '',
         rotation: '',
         sort_order: String(moment?.photos?.length ?? 0),
@@ -1613,6 +1636,7 @@ function createEmptyMemberForm() {
         nickname: '',
         quote: '',
         photo_url: '',
+        thumbnail_url: '',
         instagram_url: '',
         sort_order: '0',
     };

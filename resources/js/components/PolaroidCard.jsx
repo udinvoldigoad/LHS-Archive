@@ -1,6 +1,8 @@
 import MediaPlaceholder from './MediaPlaceholder.jsx';
 
 export default function PolaroidCard({ moment, onOpen }) {
+    const imageUrl = moment.thumbnailUrl || moment.imageUrl;
+
     return (
         <button
             className="polaroid-card"
@@ -9,7 +11,11 @@ export default function PolaroidCard({ moment, onOpen }) {
             onClick={onOpen}
         >
             <span className="polaroid-image">
-                {moment.imageUrl ? <img src={moment.imageUrl} alt={moment.title} /> : <MediaPlaceholder type="image" />}
+                {imageUrl ? (
+                    <img src={imageUrl} alt={moment.title} loading="lazy" decoding="async" />
+                ) : (
+                    <MediaPlaceholder type="image" />
+                )}
             </span>
             <span className="polaroid-caption">{moment.caption}</span>
         </button>

@@ -128,6 +128,6 @@ class ArchiveMedia
             return false;
         }
 
-        return (bool) config('archive.media.allow_external_urls', false);
+        return ! app()->isProduction() || (bool) config('archive.media.allow_external_urls', false);
     }
 }

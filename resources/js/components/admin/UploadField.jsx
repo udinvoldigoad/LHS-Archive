@@ -5,7 +5,7 @@ import { formatMediaName } from '../../utils/media.js';
 
 const mediaLimits = {
     image: {
-        acceptLabel: 'JPG, PNG, WebP, GIF',
+        acceptLabel: 'JPG, PNG, WebP, GIF -> WebP/AVIF',
         maxBytes: 5 * 1024 * 1024,
         previewLabel: 'Image preview',
     },
@@ -21,7 +21,17 @@ const mediaLimits = {
     },
 };
 
-export default function UploadField({ accept, currentUrl = '', kind, label, onClear, onUploaded, token }) {
+export default function UploadField({
+    accept,
+    currentUrl = '',
+    kind,
+    label,
+    onClear,
+    onUploaded,
+    preferThumbnail = false,
+    thumbnailOnly = false,
+    token,
+}) {
     const [status, setStatus] = useState('idle');
     const [error, setError] = useState('');
     const [progress, setProgress] = useState(0);
@@ -53,8 +63,8 @@ export default function UploadField({ accept, currentUrl = '', kind, label, onCl
         setStatus('uploading');
 
         try {
-            const media = await uploadAdminMedia(token, file, kind, setProgress);
-            onUploaded?.(media.url);
+            const media = await uploadAdminMedia(token, file, kind, setProgress, thumbnailOnly ? { variant: 'thumbnail' } : {});
+            onUploaded?.(preferThumbnail ? media.thumbnail_url ?? media.url : media.url, media);
             setStatus('uploaded');
             setProgress(100);
         } catch (uploadError) {

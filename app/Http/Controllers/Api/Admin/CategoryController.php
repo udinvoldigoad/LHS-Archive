@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Support\ArchiveCache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -19,8 +20,10 @@ class CategoryController extends Controller
     {
         $validated = $this->validateCategory($request);
         $validated['slug'] = $validated['slug'] ?? Str::slug($validated['name']);
+        $category = Category::create($validated);
+        ArchiveCache::forgetPublic();
 
-        return response()->json(Category::create($validated), 201);
+        return response()->json($category, 201);
     }
 
     public function update(Request $request, Category $category)
@@ -28,6 +31,7 @@ class CategoryController extends Controller
         $validated = $this->validateCategory($request, $category);
         $validated['slug'] = $validated['slug'] ?? Str::slug($validated['name']);
         $category->update($validated);
+        ArchiveCache::forgetPublic();
 
         return response()->json($category);
     }
@@ -35,6 +39,7 @@ class CategoryController extends Controller
     public function destroy(Category $category)
     {
         $category->delete();
+        ArchiveCache::forgetPublic();
 
         return response()->json(['message' => 'Category deleted']);
     }

@@ -38,7 +38,7 @@ function photosFromMoments(moments) {
             : [{ imageUrl: moment.imageUrl, caption: moment.caption }];
 
         momentPhotos.forEach((photo) => {
-            const src = photo.imageUrl || photo.src;
+            const src = photo.thumbnailUrl || photo.imageUrl || photo.src;
 
             if (!src || seen.has(src)) {
                 return;
@@ -157,7 +157,7 @@ export default function Home() {
                 {activePhoto ? (
                     <div className="photo-modal">
                         {activePhoto.imageUrl ? (
-                            <img src={activePhoto.imageUrl} alt={activePhoto.title} />
+                            <img src={activePhoto.imageUrl} alt={activePhoto.title} decoding="async" />
                         ) : (
                             <MediaPlaceholder type="image" />
                         )}
@@ -174,7 +174,7 @@ export default function Home() {
                 {activeMember ? (
                     <div className="member-modal">
                         {activeMember.photoUrl ? (
-                            <img src={activeMember.photoUrl} alt={activeMember.name} />
+                            <img src={activeMember.photoUrl} alt={activeMember.name} decoding="async" />
                         ) : (
                             <MediaPlaceholder type="member" />
                         )}
