@@ -59,7 +59,7 @@ export const bestMoment = {
     label: 'Featured',
     title: 'Malam Keakraban 2023',
     description: 'Satu video buat membuktikan kalau chaos juga bisa terlihat sinematik.',
-    thumbnailUrl: 'https://yyrnidiqdptvcrqpwlak.supabase.co/storage/v1/object/public/lhs-archive/archive/images/best-moment-thumbnail.jpg',
+    thumbnailUrl: '/images/hero-background.jpg',
     videoUrl: '',
 };
 

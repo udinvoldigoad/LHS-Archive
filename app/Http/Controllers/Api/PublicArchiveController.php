@@ -109,7 +109,7 @@ class PublicArchiveController extends Controller
             'label' => 'Featured',
             'title' => $settings?->best_moment_title ?? 'Malam Keakraban 2023',
             'description' => $settings?->best_moment_description ?? 'Satu video buat membuktikan kalau chaos juga bisa terlihat sinematik.',
-            'thumbnailUrl' => 'https://yyrnidiqdptvcrqpwlak.supabase.co/storage/v1/object/public/lhs-archive/archive/images/best-moment-thumbnail.jpg',
+            'thumbnailUrl' => '/images/hero-background.jpg',
             'videoUrl' => $settings?->best_moment_video_url ?? '',
         ];
     }
