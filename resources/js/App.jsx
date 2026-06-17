@@ -2,40 +2,34 @@ import { useState } from 'react';
 import Home from './pages/Home.jsx';
 import AdminLogin from './pages/AdminLogin.jsx';
 import AdminDashboard from './pages/AdminDashboard.jsx';
-
-function readAdminSession() {
-    try {
-        return window.sessionStorage.getItem('lhs-admin-unlocked') === 'true';
-    } catch {
-        return false;
-    }
-}
+import { clearAdminToken, logoutAdmin, readAdminToken, storeAdminToken } from './services/api.js';
 
 export default function App() {
-    const [adminUnlocked, setAdminUnlocked] = useState(readAdminSession);
+    const [adminToken, setAdminToken] = useState(readAdminToken);
 
-    function handleAdminLogin() {
-        try {
-            window.sessionStorage.setItem('lhs-admin-unlocked', 'true');
-        } catch {
-            // The dashboard can still open for this tab if storage is blocked.
-        }
-
-        setAdminUnlocked(true);
+    function handleAdminLogin(token) {
+        storeAdminToken(token);
+        setAdminToken(token);
     }
 
-    function handleAdminLogout() {
-        try {
-            window.sessionStorage.removeItem('lhs-admin-unlocked');
-        } catch {
-            // Ignore storage access failures.
-        }
+    async function handleAdminLogout() {
+        const token = adminToken;
+        clearAdminToken();
+        setAdminToken('');
 
-        setAdminUnlocked(false);
+        try {
+            await logoutAdmin(token);
+        } catch {
+            // Token cleanup in the browser is enough if the API is unreachable.
+        }
     }
 
     if (window.location.pathname.startsWith('/admin')) {
-        return adminUnlocked ? <AdminDashboard onLogout={handleAdminLogout} /> : <AdminLogin onLogin={handleAdminLogin} />;
+        return adminToken ? (
+            <AdminDashboard token={adminToken} onLogout={handleAdminLogout} />
+        ) : (
+            <AdminLogin onLogin={handleAdminLogin} />
+        );
     }
 
     return <Home />;

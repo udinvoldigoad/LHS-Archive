@@ -1,13 +1,18 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Send } from 'lucide-react';
 import SectionHeader from './SectionHeader.jsx';
 
-export default function MessageWall({ initialMessages }) {
+export default function MessageWall({ initialMessages, onSubmitMessage }) {
     const [notes, setNotes] = useState(initialMessages);
     const [name, setName] = useState('');
     const [message, setMessage] = useState('');
+    const [status, setStatus] = useState('idle');
 
-    function handleSubmit(event) {
+    useEffect(() => {
+        setNotes(initialMessages);
+    }, [initialMessages]);
+
+    async function handleSubmit(event) {
         event.preventDefault();
 
         const trimmedName = name.trim();
@@ -17,16 +22,28 @@ export default function MessageWall({ initialMessages }) {
             return;
         }
 
-        setNotes([
-            {
-                name: trimmedName,
-                message: trimmedMessage,
-                rotation: notes.length % 2 === 0 ? '1deg' : '-1deg',
-            },
-            ...notes,
-        ]);
-        setName('');
-        setMessage('');
+        setStatus('saving');
+
+        try {
+            const savedMessage = onSubmitMessage
+                ? await onSubmitMessage({ name: trimmedName, message: trimmedMessage })
+                : { name: trimmedName, message: trimmedMessage };
+
+            setNotes([
+                {
+                    ...savedMessage,
+                    name: savedMessage.name ?? trimmedName,
+                    message: savedMessage.message ?? trimmedMessage,
+                    rotation: savedMessage.rotation ?? (notes.length % 2 === 0 ? '1deg' : '-1deg'),
+                },
+                ...notes,
+            ]);
+            setName('');
+            setMessage('');
+            setStatus('saved');
+        } catch {
+            setStatus('error');
+        }
     }
 
     return (
@@ -53,8 +70,9 @@ export default function MessageWall({ initialMessages }) {
                     />
                     <button className="archive-button archive-button-primary" type="submit">
                         <Send size={16} aria-hidden="true" />
-                        Kirim Pesan
+                        {status === 'saving' ? 'Mengirim...' : 'Kirim Pesan'}
                     </button>
+                    {status === 'error' ? <p className="form-status-error">Pesan gagal dikirim. Coba lagi sebentar.</p> : null}
                 </form>
                 <div className="message-wall">
                     {notes.map((note, index) => (

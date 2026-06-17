@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import {
-    archiveLinks,
-    bestMoment,
+    archiveLinks as fallbackArchiveLinks,
+    bestMoment as fallbackBestMoment,
     heroPhotos,
-    members,
-    messages,
-    moments,
-    siteSettings,
+    members as fallbackMembers,
+    messages as fallbackMessages,
+    moments as fallbackMoments,
+    siteSettings as fallbackSiteSettings,
 } from '../data/archiveData.js';
 import Navbar from '../components/Navbar.jsx';
 import Hero from '../components/Hero.jsx';
@@ -25,10 +25,46 @@ import {
     getSectionIdFromHash,
     scrollToSection,
 } from '../utils/sectionNavigation.js';
+import { fetchArchive, postPublicMessage } from '../services/api.js';
 
 export default function Home() {
     const [activePhoto, setActivePhoto] = useState(null);
     const [activeMember, setActiveMember] = useState(null);
+    const [archive, setArchive] = useState({
+        settings: fallbackSiteSettings,
+        bestMoment: fallbackBestMoment,
+        links: fallbackArchiveLinks,
+        moments: fallbackMoments,
+        members: fallbackMembers,
+        messages: fallbackMessages,
+    });
+
+    useEffect(() => {
+        let isMounted = true;
+
+        fetchArchive()
+            .then((data) => {
+                if (!isMounted) {
+                    return;
+                }
+
+                setArchive((current) => ({
+                    settings: data.settings ?? current.settings,
+                    bestMoment: data.bestMoment ?? current.bestMoment,
+                    links: data.links?.length ? data.links : current.links,
+                    moments: data.moments?.length ? data.moments : current.moments,
+                    members: data.members?.length ? data.members : current.members,
+                    messages: data.messages?.length ? data.messages : current.messages,
+                }));
+            })
+            .catch(() => {
+                // Keep the static archive visible when the API is unavailable.
+            });
+
+        return () => {
+            isMounted = false;
+        };
+    }, []);
 
     useEffect(() => {
         function scrollToTop() {
@@ -72,17 +108,17 @@ export default function Home() {
 
     return (
         <div className="site-shell">
-            <Navbar title={siteSettings.title} />
+            <Navbar title={archive.settings.title} />
             <main>
-                <Hero settings={siteSettings} photos={heroPhotos} />
-                <BestMoment moment={bestMoment} />
-                <ArchiveLinks links={archiveLinks} />
-                <ScrapbookMoments moments={moments} onOpenPhoto={setActivePhoto} />
-                <MemberArchive members={members} onOpenMember={setActiveMember} />
-                <MessageWall initialMessages={messages} />
+                <Hero settings={archive.settings} photos={heroPhotos} />
+                <BestMoment moment={archive.bestMoment} />
+                <ArchiveLinks links={archive.links} />
+                <ScrapbookMoments moments={archive.moments} onOpenPhoto={setActivePhoto} />
+                <MemberArchive members={archive.members} onOpenMember={setActiveMember} />
+                <MessageWall initialMessages={archive.messages} onSubmitMessage={postPublicMessage} />
             </main>
             <Footer />
-            <MusicToggle music={siteSettings.music} />
+            <MusicToggle music={archive.settings.music} />
 
             <Modal open={Boolean(activePhoto)} onClose={() => setActivePhoto(null)} labelledBy="photo-modal-title">
                 {activePhoto ? (

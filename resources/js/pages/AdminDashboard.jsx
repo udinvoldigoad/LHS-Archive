@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
     Bell,
     Camera,
@@ -22,13 +22,14 @@ import {
     Volume2,
 } from 'lucide-react';
 import {
-    archiveLinks,
-    bestMoment,
-    members,
-    messages,
-    moments,
-    siteSettings,
+    archiveLinks as fallbackArchiveLinks,
+    bestMoment as fallbackBestMoment,
+    members as fallbackMembers,
+    messages as fallbackMessages,
+    moments as fallbackMoments,
+    siteSettings as fallbackSiteSettings,
 } from '../data/archiveData.js';
+import { fetchAdminDashboard } from '../services/api.js';
 
 const adminPanels = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -42,16 +43,42 @@ const adminPanels = [
 
 const momentPhotoCounts = [12, 8, 3, 24, 5];
 
-export default function AdminDashboard({ onLogout }) {
+export default function AdminDashboard({ token, onLogout }) {
     const [activePanel, setActivePanel] = useState('dashboard');
+    const [dashboard, setDashboard] = useState(null);
+    const [status, setStatus] = useState('loading');
     const activeMeta = adminPanels.find((panel) => panel.id === activePanel) ?? adminPanels[0];
 
-    const totals = useMemo(() => ({
-        links: archiveLinks.length,
-        moments: moments.length,
-        members: members.length,
-        messages: messages.length,
-    }), []);
+    useEffect(() => {
+        let isMounted = true;
+
+        fetchAdminDashboard(token)
+            .then((data) => {
+                if (!isMounted) {
+                    return;
+                }
+
+                setDashboard(data);
+                setStatus('ready');
+            })
+            .catch((error) => {
+                if (error.status === 401) {
+                    onLogout?.();
+                    return;
+                }
+
+                if (isMounted) {
+                    setStatus('error');
+                }
+            });
+
+        return () => {
+            isMounted = false;
+        };
+    }, [onLogout, token]);
+
+    const adminData = useMemo(() => mapAdminDashboard(dashboard), [dashboard]);
+    const totals = adminData.stats;
 
     return (
         <div className="admin-dashboard-shell">
@@ -59,30 +86,37 @@ export default function AdminDashboard({ onLogout }) {
                 activePanel={activePanel}
                 onLogout={onLogout}
                 onSelectPanel={setActivePanel}
+                profilePhoto={adminData.members[0]?.photoUrl ?? fallbackMembers[0].photoUrl}
             />
 
             <main className="admin-dashboard-main">
                 <AdminTopbar title={activeMeta.label} />
+                {status === 'loading' ? <p className="admin-api-status">Loading archive database...</p> : null}
+                {status === 'error' ? (
+                    <p className="admin-api-status admin-api-status-error">
+                        API dashboard belum bisa diambil. Menampilkan fallback sementara.
+                    </p>
+                ) : null}
 
                 {activePanel === 'dashboard' ? (
                     <OverviewPanel totals={totals} onSelectPanel={setActivePanel} />
                 ) : null}
-                {activePanel === 'links' ? <LinksPanel /> : null}
-                {activePanel === 'moments' ? <MomentsPanel /> : null}
-                {activePanel === 'video' ? <VideoPanel /> : null}
-                {activePanel === 'members' ? <MembersPanel /> : null}
-                {activePanel === 'messages' ? <MessagesPanel /> : null}
-                {activePanel === 'music' ? <MusicPanel /> : null}
+                {activePanel === 'links' ? <LinksPanel links={adminData.links} /> : null}
+                {activePanel === 'moments' ? <MomentsPanel moments={adminData.moments} /> : null}
+                {activePanel === 'video' ? <VideoPanel bestMoment={adminData.bestMoment} /> : null}
+                {activePanel === 'members' ? <MembersPanel members={adminData.members} /> : null}
+                {activePanel === 'messages' ? <MessagesPanel messages={adminData.messages} /> : null}
+                {activePanel === 'music' ? <MusicPanel siteSettings={adminData.siteSettings} /> : null}
             </main>
         </div>
     );
 }
 
-function AdminSidebar({ activePanel, onSelectPanel, onLogout }) {
+function AdminSidebar({ activePanel, onSelectPanel, onLogout, profilePhoto }) {
     return (
         <aside className="admin-sidebar">
             <div className="admin-profile">
-                <img src={members[0].photoUrl} alt="Admin avatar" />
+                <img src={profilePhoto} alt="Admin avatar" />
                 <div>
                     <h2>LHS Admin</h2>
                     <p>Archive Custodian</p>
@@ -257,9 +291,9 @@ function OverviewPanel({ totals, onSelectPanel }) {
                     <p className="archive-kicker">Archive Health</p>
                     <h3>Prototype panel aktif. Backend belum disambung.</h3>
                     <ul>
-                        <li>Data masih placeholder dari file React.</li>
-                        <li>Password masih demo untuk sesi browser.</li>
-                        <li>CRUD asli masuk setelah API Laravel siap.</li>
+                        <li>Data dashboard sudah dibaca dari API Laravel.</li>
+                        <li>Token admin aktif selama cache backend masih menyimpan kunci.</li>
+                        <li>CRUD form visual akan disambung ke endpoint yang sudah dibuat.</li>
                     </ul>
                 </aside>
             </div>
@@ -267,7 +301,7 @@ function OverviewPanel({ totals, onSelectPanel }) {
     );
 }
 
-function LinksPanel() {
+function LinksPanel({ links }) {
     return (
         <section className="admin-panel">
             <PanelHeader
@@ -278,7 +312,7 @@ function LinksPanel() {
             />
 
             <div className="admin-link-grid">
-                {archiveLinks.map((link, index) => (
+                {links.map((link, index) => (
                     <article
                         className="admin-link-card"
                         key={link.title}
@@ -301,7 +335,7 @@ function LinksPanel() {
     );
 }
 
-function MomentsPanel() {
+function MomentsPanel({ moments }) {
     return (
         <section className="admin-panel">
             <PanelHeader
@@ -323,7 +357,7 @@ function MomentsPanel() {
                         </div>
                         <div>
                             <p>{moment.title}</p>
-                            <span>{momentPhotoCounts[index] ?? 6} Photos</span>
+                            <span>{moment.photoCount ?? momentPhotoCounts[index] ?? 6} Photos</span>
                         </div>
                         <AdminFloatingActions />
                     </article>
@@ -333,7 +367,7 @@ function MomentsPanel() {
     );
 }
 
-function VideoPanel() {
+function VideoPanel({ bestMoment }) {
     return (
         <section className="admin-panel">
             <PanelHeader
@@ -394,7 +428,7 @@ function VideoPanel() {
     );
 }
 
-function MembersPanel() {
+function MembersPanel({ members }) {
     return (
         <section className="admin-panel">
             <PanelHeader
@@ -423,7 +457,7 @@ function MembersPanel() {
     );
 }
 
-function MessagesPanel() {
+function MessagesPanel({ messages }) {
     return (
         <section className="admin-panel">
             <PanelHeader
@@ -459,7 +493,7 @@ function MessagesPanel() {
     );
 }
 
-function MusicPanel() {
+function MusicPanel({ siteSettings }) {
     return (
         <section className="admin-panel">
             <PanelHeader
@@ -497,6 +531,116 @@ function MusicPanel() {
             </div>
         </section>
     );
+}
+
+function mapAdminDashboard(dashboard) {
+    if (!dashboard) {
+        return {
+            stats: {
+                links: fallbackArchiveLinks.length,
+                moments: fallbackMoments.length,
+                members: fallbackMembers.length,
+                messages: fallbackMessages.length,
+            },
+            links: fallbackArchiveLinks,
+            moments: fallbackMoments.map((moment, index) => ({
+                ...moment,
+                photoCount: momentPhotoCounts[index] ?? 1,
+            })),
+            members: fallbackMembers,
+            messages: fallbackMessages,
+            siteSettings: fallbackSiteSettings,
+            bestMoment: fallbackBestMoment,
+        };
+    }
+
+    const settings = dashboard.settings ?? {};
+
+    const mappedLinks = (dashboard.links ?? []).map((link, index) => ({
+        id: link.id,
+        title: link.title,
+        description: link.description,
+        url: link.url,
+        thumbnailUrl: link.thumbnail_url,
+        category: link.category?.name ?? 'Archive',
+        categoryId: link.category_id,
+        buttonLabel: 'Buka Link',
+        isFeatured: Boolean(link.is_featured),
+        sortOrder: link.sort_order ?? index,
+        rotation: index % 3 === 0 ? '-0.7deg' : index % 3 === 1 ? '0deg' : '0.8deg',
+    }));
+
+    const mappedMoments = (dashboard.moments ?? []).map((moment, index) => {
+        const photos = moment.photos ?? [];
+        const firstPhoto = photos[0] ?? {};
+
+        return {
+            id: moment.id,
+            title: moment.title,
+            description: moment.description,
+            slug: moment.slug,
+            caption: firstPhoto.caption ?? moment.description,
+            imageUrl: firstPhoto.image_url,
+            rotation: firstPhoto.rotation ?? (index % 2 === 0 ? '-1deg' : '1deg'),
+            photoCount: photos.length,
+            photos: photos.map((photo) => ({
+                id: photo.id,
+                title: moment.title,
+                caption: photo.caption,
+                imageUrl: photo.image_url,
+                rotation: photo.rotation,
+                sortOrder: photo.sort_order,
+            })),
+        };
+    });
+
+    const mappedMembers = (dashboard.members ?? []).map((member) => ({
+        id: member.id,
+        name: member.name,
+        nickname: member.nickname,
+        role: member.role,
+        quote: member.quote,
+        photoUrl: member.photo_url,
+        instagramUrl: member.instagram_url,
+        funFact: member.fun_fact,
+        sortOrder: member.sort_order,
+    }));
+
+    const mappedMessages = (dashboard.messages ?? []).map((message, index) => ({
+        id: message.id,
+        name: message.name,
+        message: message.message,
+        isVisible: Boolean(message.is_visible),
+        rotation: index % 2 === 0 ? '1deg' : '-1deg',
+    }));
+
+    return {
+        stats: {
+            links: dashboard.stats?.links ?? mappedLinks.length,
+            moments: dashboard.stats?.moments ?? mappedMoments.length,
+            members: dashboard.stats?.members ?? mappedMembers.length,
+            messages: dashboard.stats?.messages ?? mappedMessages.length,
+        },
+        links: mappedLinks.length ? mappedLinks : fallbackArchiveLinks,
+        moments: mappedMoments.length ? mappedMoments : fallbackMoments,
+        members: mappedMembers.length ? mappedMembers : fallbackMembers,
+        messages: mappedMessages.length ? mappedMessages : fallbackMessages,
+        siteSettings: {
+            ...fallbackSiteSettings,
+            title: settings.site_title ?? fallbackSiteSettings.title,
+            tagline: settings.tagline ?? fallbackSiteSettings.tagline,
+            music: {
+                ...fallbackSiteSettings.music,
+                url: settings.background_music_url ?? fallbackSiteSettings.music.url,
+            },
+        },
+        bestMoment: {
+            ...fallbackBestMoment,
+            title: settings.best_moment_title ?? fallbackBestMoment.title,
+            description: settings.best_moment_description ?? fallbackBestMoment.description,
+            videoUrl: settings.best_moment_video_url ?? fallbackBestMoment.videoUrl,
+        },
+    };
 }
 
 function AdminCardActions() {

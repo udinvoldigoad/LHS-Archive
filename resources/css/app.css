@@ -1173,9 +1173,15 @@ img {
 }
 
 .admin-login-status-mismatch,
-.admin-login-status-empty {
+.admin-login-status-empty,
+.admin-login-status-error {
     border-color: rgba(239, 68, 68, 0.5);
     color: #fca5a5;
+}
+
+.admin-login-status-loading {
+    border-color: rgba(168, 240, 74, 0.42);
+    color: var(--on-surface-variant);
 }
 
 .admin-submit {
@@ -1438,6 +1444,25 @@ img {
 .admin-topbar-actions img {
     width: 46px;
     height: 46px;
+}
+
+.admin-api-status {
+    margin: -26px 0 30px;
+    padding: 10px 12px;
+    border: 1px solid rgba(168, 240, 74, 0.32);
+    border-radius: 4px;
+    background: rgba(168, 240, 74, 0.08);
+    color: var(--on-surface-variant);
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.admin-api-status-error,
+.form-status-error {
+    border-color: rgba(239, 68, 68, 0.45);
+    background: rgba(239, 68, 68, 0.08);
+    color: #fca5a5;
 }
 
 .admin-panel {

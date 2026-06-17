@@ -4,8 +4,7 @@ import Navbar from '../components/Navbar.jsx';
 import Footer from '../components/Footer.jsx';
 import MusicToggle from '../components/MusicToggle.jsx';
 import { heroPhotos, siteSettings } from '../data/archiveData.js';
-
-const demoPassword = 'lhs-archive';
+import { loginAdmin } from '../services/api.js';
 
 export default function AdminLogin({ onLogin }) {
     const [form, setForm] = useState({
@@ -14,6 +13,7 @@ export default function AdminLogin({ onLogin }) {
     });
     const [showPassword, setShowPassword] = useState(false);
     const [status, setStatus] = useState('idle');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     function updateField(event) {
         const { name, value } = event.target;
@@ -24,7 +24,7 @@ export default function AdminLogin({ onLogin }) {
         }));
     }
 
-    function handleSubmit(event) {
+    async function handleSubmit(event) {
         event.preventDefault();
 
         if (!form.password.trim()) {
@@ -32,19 +32,26 @@ export default function AdminLogin({ onLogin }) {
             return;
         }
 
-        if (form.password !== demoPassword) {
-            setStatus('mismatch');
-            return;
-        }
+        setIsSubmitting(true);
+        setStatus('loading');
 
-        setStatus('ready');
-        onLogin?.();
+        try {
+            const response = await loginAdmin(form.password);
+            setStatus('ready');
+            onLogin?.(response.token);
+        } catch (error) {
+            setStatus(error.status === 422 ? 'mismatch' : 'error');
+        } finally {
+            setIsSubmitting(false);
+        }
     }
 
     const statusMessage = {
         empty: 'Password belum diisi. Arsipnya masih pura-pura terkunci.',
-        mismatch: 'Password demo belum cocok. Coba pakai hint sementara di bawah form.',
-        ready: 'Gate admin siap. Dashboard dan auth backend bisa disambung setelah ini.',
+        loading: 'Lagi cek kunci admin ke backend...',
+        mismatch: 'Password admin belum cocok.',
+        error: 'Login gagal. Cek server Laravel atau koneksi API dulu.',
+        ready: 'Gate admin siap. Masuk ke dashboard.',
     }[status];
 
     return (
@@ -126,13 +133,13 @@ export default function AdminLogin({ onLogin }) {
 
                         <button className="archive-button archive-button-primary admin-submit" type="submit">
                             <ShieldCheck size={18} aria-hidden="true" />
-                            Unlock Archive
+                            {isSubmitting ? 'Checking...' : 'Unlock Archive'}
                         </button>
                     </form>
 
                     <p className="admin-login-note">
                         <Terminal size={16} aria-hidden="true" />
-                        Prototype gate. Hint demo: <strong>{demoPassword}</strong>
+                        Password dibaca dari <strong>ADMIN_PASSWORD</strong> di backend.
                     </p>
                 </section>
 
@@ -141,7 +148,7 @@ export default function AdminLogin({ onLogin }) {
                     <h2>Belum auth beneran, tapi tempatnya sudah disiapkan.</h2>
                     <ul>
                         <li>Password dari env backend.</li>
-                        <li>Session sederhana untuk akses dashboard.</li>
+                        <li>Token sederhana untuk akses dashboard.</li>
                         <li>Form CRUD untuk link, foto, member, pesan, dan best moment.</li>
                     </ul>
                 </aside>
