@@ -14,6 +14,7 @@ export default function AdminLogin({ onLogin }) {
     const [showPassword, setShowPassword] = useState(false);
     const [status, setStatus] = useState('idle');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
 
     function updateField(event) {
         const { name, value } = event.target;
@@ -34,6 +35,7 @@ export default function AdminLogin({ onLogin }) {
 
         setIsSubmitting(true);
         setStatus('loading');
+        setErrorMessage('');
 
         try {
             const response = await loginAdmin(form.password);
@@ -41,6 +43,7 @@ export default function AdminLogin({ onLogin }) {
             onLogin?.(response.token);
         } catch (error) {
             setStatus(error.status === 422 ? 'mismatch' : 'error');
+            setErrorMessage(error.message || '');
         } finally {
             setIsSubmitting(false);
         }
@@ -50,7 +53,7 @@ export default function AdminLogin({ onLogin }) {
         empty: 'Password belum diisi. Arsipnya masih pura-pura terkunci.',
         loading: 'Lagi cek kunci admin ke backend...',
         mismatch: 'Password admin belum cocok.',
-        error: 'Login gagal. Cek server Laravel atau koneksi API dulu.',
+        error: errorMessage || 'Login gagal. Cek server Laravel atau koneksi API dulu.',
         ready: 'Gate admin siap. Masuk ke dashboard.',
     }[status];
 
