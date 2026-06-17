@@ -1,4 +1,14 @@
-import { Link, MessageCircle, Images } from 'lucide-react';
+import { Link, Images } from 'lucide-react';
+
+function InstagramIcon(props) {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+            <rect width="16" height="16" x="4" y="4" rx="4" />
+            <circle cx="12" cy="12" r="3.2" />
+            <circle cx="17" cy="7" r="0.7" fill="currentColor" stroke="none" />
+        </svg>
+    );
+}
 
 export default function Hero({ settings, photos }) {
     return (
@@ -23,9 +33,14 @@ export default function Hero({ settings, photos }) {
                         <Images size={16} aria-hidden="true" />
                         Lihat Kenangan
                     </a>
-                    <a className="archive-button archive-button-purple" href="#messages">
-                        <MessageCircle size={16} aria-hidden="true" />
-                        Tulis Pesan
+                    <a
+                        className="archive-button archive-button-purple"
+                        href="https://www.instagram.com/lhs_official99"
+                        target="_blank"
+                        rel="noreferrer"
+                    >
+                        <InstagramIcon width={16} height={16} aria-hidden="true" />
+                        Instagram
                     </a>
                 </div>
             </div>

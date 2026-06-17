@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\Admin\MessageController as AdminMessageController;
 use App\Http\Controllers\Api\Admin\MomentController;
 use App\Http\Controllers\Api\Admin\PhotoController;
 use App\Http\Controllers\Api\Admin\SettingController;
+use App\Http\Controllers\Api\Admin\UploadController;
 use App\Http\Controllers\Api\PublicArchiveController;
 
 Route::get('/archive', [PublicArchiveController::class, 'archive']);
@@ -27,6 +28,7 @@ Route::post('/admin/logout', [AdminAuthController::class, 'logout']);
 
 Route::middleware('simple.admin')->prefix('admin')->group(function () {
     Route::get('/dashboard', DashboardController::class);
+    Route::post('/uploads', [UploadController::class, 'store']);
     Route::get('/settings', [SettingController::class, 'show']);
     Route::put('/settings', [SettingController::class, 'update']);
     Route::apiResource('categories', CategoryController::class)->except(['show']);

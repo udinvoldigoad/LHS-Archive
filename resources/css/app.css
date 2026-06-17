@@ -1658,6 +1658,86 @@ img {
     gap: 26px;
 }
 
+.admin-category-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.admin-category-card {
+    display: flex;
+    min-height: 190px;
+    flex-direction: column;
+    padding: 22px;
+    border: 1px solid rgba(236, 255, 206, 0.38);
+    border-radius: 6px;
+    background: rgba(37, 38, 42, 0.86);
+    transform: rotate(var(--tilt));
+    transition: border-color 180ms ease, transform 180ms ease, background 180ms ease;
+}
+
+.admin-category-card:hover {
+    border-color: var(--primary-container);
+    background: var(--surface-soft);
+    transform: rotate(0deg) translateY(-3px);
+}
+
+.admin-category-card > span {
+    color: var(--primary-container);
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.admin-category-card h3 {
+    margin: 14px 0 8px;
+    color: var(--primary);
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 24px;
+    line-height: 1.1;
+}
+
+.admin-category-card p {
+    margin: 0;
+    color: var(--on-surface-variant);
+    font-size: 13px;
+}
+
+.admin-category-card .admin-card-actions {
+    margin-top: auto;
+    padding-top: 20px;
+}
+
+.admin-empty-state {
+    display: grid;
+    min-height: 230px;
+    place-items: center;
+    padding: 34px;
+    border: 1px dashed rgba(168, 240, 74, 0.42);
+    border-radius: 6px;
+    background: rgba(168, 240, 74, 0.055);
+    color: var(--on-surface-variant);
+    text-align: center;
+}
+
+.admin-empty-state svg {
+    color: var(--primary-container);
+}
+
+.admin-empty-state h3 {
+    margin: 14px 0 6px;
+    color: var(--primary);
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 24px;
+    line-height: 1.1;
+}
+
+.admin-empty-state p {
+    max-width: 420px;
+    margin: 0;
+}
+
 .admin-modal-backdrop {
     position: fixed;
     inset: 0;
@@ -1799,6 +1879,28 @@ img {
     text-transform: uppercase;
 }
 
+.admin-field-stack {
+    display: grid;
+    gap: 8px;
+    align-content: start;
+}
+
+.admin-field-label {
+    color: var(--on-surface-variant);
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.admin-field-stack > label {
+    margin-bottom: 0;
+}
+
+.admin-form-card .admin-field-stack {
+    margin-bottom: 20px;
+}
+
 .admin-link-form-grid input,
 .admin-link-form-grid select,
 .admin-link-form-grid textarea {
@@ -1833,6 +1935,89 @@ img {
     border-color: var(--primary-container);
 }
 
+.admin-upload-inline {
+    display: grid;
+    gap: 8px;
+    margin-top: 2px;
+}
+
+.admin-upload-current {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    color: var(--on-surface-variant);
+    font-size: 12px;
+}
+
+.admin-upload-current span {
+    max-width: 320px;
+    overflow: hidden;
+    color: var(--on-surface);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-upload-current a,
+.admin-upload-clear {
+    color: var(--primary-container);
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.admin-upload-clear {
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+
+.admin-upload-trigger {
+    display: inline-flex !important;
+    width: fit-content;
+    align-items: center;
+    gap: 8px !important;
+    min-height: 34px;
+    padding: 0 12px;
+    border: 1px solid rgba(168, 240, 74, 0.52);
+    border-radius: 4px;
+    background: rgba(168, 240, 74, 0.08);
+    color: var(--primary-container);
+    cursor: pointer;
+    transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
+}
+
+.admin-upload-trigger:hover,
+.admin-upload-trigger:focus-visible {
+    border-color: var(--primary-container);
+    background: rgba(168, 240, 74, 0.14);
+    transform: translateY(-1px);
+}
+
+.admin-upload-trigger:disabled {
+    cursor: wait;
+    opacity: 0.68;
+}
+
+.admin-upload-clear:hover,
+.admin-upload-clear:focus-visible {
+    color: var(--on-surface);
+}
+
+.admin-upload-inline input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.admin-upload-inline > span {
+    color: var(--primary-container);
+    font-size: 12px;
+    text-transform: none;
+}
+
 .admin-link-form-wide {
     grid-column: 1 / -1;
 }
@@ -1858,6 +2043,16 @@ img {
     border-radius: 4px;
     background: rgba(239, 68, 68, 0.08);
     color: #fca5a5;
+    font-size: 13px;
+}
+
+.admin-form-success {
+    margin: 18px 0 0;
+    padding: 10px 12px;
+    border: 1px solid rgba(168, 240, 74, 0.45);
+    border-radius: 4px;
+    background: rgba(168, 240, 74, 0.08);
+    color: var(--primary-container);
     font-size: 13px;
 }
 
@@ -2135,6 +2330,10 @@ img {
     transform: rotate(-0.7deg);
 }
 
+.admin-settings-form {
+    max-width: 760px;
+}
+
 .admin-form-card h3 {
     margin: 0 0 24px;
     padding-bottom: 12px;
@@ -2400,6 +2599,11 @@ img {
     background: var(--paper);
 }
 
+.admin-message-note.is-hidden {
+    opacity: 0.56;
+    filter: grayscale(0.8);
+}
+
 .admin-message-note p {
     margin: 0;
     font-size: 16px;
@@ -2410,6 +2614,20 @@ img {
     margin-top: 22px;
     font-family: "Space Grotesk", sans-serif;
     font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.admin-message-status {
+    display: inline-flex;
+    width: fit-content;
+    margin-top: 10px;
+    padding: 4px 8px;
+    border: 1px solid rgba(18, 20, 20, 0.22);
+    border-radius: 999px;
+    color: rgba(18, 20, 20, 0.76);
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
 }
@@ -2438,6 +2656,11 @@ img {
 
 .admin-message-note button:last-child {
     color: #93000a;
+}
+
+.admin-message-note button:disabled {
+    cursor: wait;
+    opacity: 0.58;
 }
 
 .admin-music-layout {
@@ -2574,6 +2797,7 @@ img {
     }
 
     .admin-stat-grid,
+    .admin-category-grid,
     .admin-link-grid,
     .admin-polaroid-grid,
     .admin-message-grid {
@@ -2730,6 +2954,7 @@ img {
     }
 
     .admin-stat-grid,
+    .admin-category-grid,
     .admin-control-grid,
     .admin-link-grid,
     .admin-polaroid-grid,
@@ -2785,6 +3010,7 @@ img {
     }
 
     .admin-control-card,
+    .admin-category-card,
     .admin-link-card,
     .admin-member-admin-card,
     .admin-form-card,

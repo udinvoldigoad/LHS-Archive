@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     Bell,
     Camera,
@@ -16,6 +16,7 @@ import {
     Plus,
     Save,
     Settings,
+    Tags,
     Trash2,
     Upload,
     UsersRound,
@@ -31,25 +32,34 @@ import {
     siteSettings as fallbackSiteSettings,
 } from '../data/archiveData.js';
 import {
+    createAdminCategory,
     createAdminLink,
     createAdminMember,
     createAdminMoment,
     createAdminPhoto,
+    deleteAdminCategory,
     deleteAdminLink,
     deleteAdminMember,
+    deleteAdminMessage,
     deleteAdminMoment,
     deleteAdminPhoto,
     fetchAdminDashboard,
+    updateAdminCategory,
     updateAdminLink,
     updateAdminMember,
+    updateAdminMessageVisibility,
     updateAdminMoment,
     updateAdminPhoto,
+    updateAdminSettings,
+    uploadAdminMedia,
 } from '../services/api.js';
 
 const adminPanels = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'categories', label: 'Categories', icon: Tags },
     { id: 'links', label: 'Links', icon: Link2 },
     { id: 'moments', label: 'Polaroid Moments', icon: Camera },
+    { id: 'settings', label: 'Site Settings', icon: Settings },
     { id: 'video', label: 'Best Moment Video', icon: Clapperboard },
     { id: 'members', label: 'Members', icon: UsersRound },
     { id: 'messages', label: 'Messages', icon: MessageSquareText },
@@ -110,6 +120,9 @@ export default function AdminDashboard({ token, onLogout }) {
                 {activePanel === 'dashboard' ? (
                     <OverviewPanel totals={totals} onSelectPanel={setActivePanel} />
                 ) : null}
+                {activePanel === 'categories' ? (
+                    <CategoriesPanel categories={adminData.categories} onChanged={loadDashboard} token={token} />
+                ) : null}
                 {activePanel === 'links' ? (
                     <LinksPanel
                         categories={adminData.categories}
@@ -121,12 +134,36 @@ export default function AdminDashboard({ token, onLogout }) {
                 {activePanel === 'moments' ? (
                     <MomentsPanel moments={adminData.moments} onChanged={loadDashboard} token={token} />
                 ) : null}
-                {activePanel === 'video' ? <VideoPanel bestMoment={adminData.bestMoment} /> : null}
+                {activePanel === 'settings' ? (
+                    <SettingsPanel
+                        bestMoment={adminData.bestMoment}
+                        onChanged={loadDashboard}
+                        siteSettings={adminData.siteSettings}
+                        token={token}
+                    />
+                ) : null}
+                {activePanel === 'video' ? (
+                    <VideoPanel
+                        bestMoment={adminData.bestMoment}
+                        onChanged={loadDashboard}
+                        siteSettings={adminData.siteSettings}
+                        token={token}
+                    />
+                ) : null}
                 {activePanel === 'members' ? (
                     <MembersPanel members={adminData.members} onChanged={loadDashboard} token={token} />
                 ) : null}
-                {activePanel === 'messages' ? <MessagesPanel messages={adminData.messages} /> : null}
-                {activePanel === 'music' ? <MusicPanel siteSettings={adminData.siteSettings} /> : null}
+                {activePanel === 'messages' ? (
+                    <MessagesPanel messages={adminData.messages} onChanged={loadDashboard} token={token} />
+                ) : null}
+                {activePanel === 'music' ? (
+                    <MusicPanel
+                        bestMoment={adminData.bestMoment}
+                        onChanged={loadDashboard}
+                        siteSettings={adminData.siteSettings}
+                        token={token}
+                    />
+                ) : null}
             </main>
         </div>
     );
@@ -262,6 +299,86 @@ function AdminModal({ children, eyebrow, isOpen, onClose, title }) {
     );
 }
 
+function AdminEmptyState({ children, icon: Icon = FileText, title }) {
+    return (
+        <div className="admin-empty-state">
+            <Icon size={28} aria-hidden="true" />
+            <h3>{title}</h3>
+            <p>{children}</p>
+        </div>
+    );
+}
+
+function UploadField({ accept, currentUrl = '', kind, label, onClear, onUploaded, token }) {
+    const [status, setStatus] = useState('idle');
+    const [error, setError] = useState('');
+    const inputRef = useRef(null);
+
+    async function uploadFile(event) {
+        const file = event.target.files?.[0];
+        event.target.value = '';
+
+        if (!file) {
+            return;
+        }
+
+        setStatus('uploading');
+        setError('');
+
+        try {
+            const media = await uploadAdminMedia(token, file, kind);
+            onUploaded?.(media.url);
+            setStatus('uploaded');
+        } catch (uploadError) {
+            setError(resolveFormError(uploadError));
+            setStatus('idle');
+        }
+    }
+
+    return (
+        <div className="admin-upload-inline">
+            <div className="admin-upload-current">
+                <span>{currentUrl ? formatMediaName(currentUrl) : 'No file uploaded yet.'}</span>
+                {currentUrl ? (
+                    <a href={currentUrl} target="_blank" rel="noreferrer">
+                        Preview
+                    </a>
+                ) : null}
+                {currentUrl && onClear ? (
+                    <button
+                        className="admin-upload-clear"
+                        type="button"
+                        onClick={() => {
+                            setStatus('idle');
+                            onClear();
+                        }}
+                    >
+                        Clear
+                    </button>
+                ) : null}
+            </div>
+            <button
+                className="admin-upload-trigger"
+                type="button"
+                disabled={status === 'uploading'}
+                onClick={() => inputRef.current?.click()}
+            >
+                <Upload size={17} aria-hidden="true" />
+                {status === 'uploading' ? 'Uploading...' : label}
+            </button>
+            <input
+                accept={accept}
+                disabled={status === 'uploading'}
+                ref={inputRef}
+                type="file"
+                onChange={uploadFile}
+            />
+            {status === 'uploaded' ? <span>Uploaded. URL field updated.</span> : null}
+            {error ? <p className="admin-form-error">{error}</p> : null}
+        </div>
+    );
+}
+
 function OverviewPanel({ totals, onSelectPanel }) {
     const stats = [
         { label: 'Live Links', value: totals.links, detail: 'preview cards ready', icon: Link2 },
@@ -271,6 +388,13 @@ function OverviewPanel({ totals, onSelectPanel }) {
     ];
 
     const quickPanels = [
+        {
+            id: 'categories',
+            title: 'Categories',
+            description: 'Kelola grup link archive.',
+            meta: 'link groups',
+            icon: Tags,
+        },
         {
             id: 'links',
             title: 'Manage Links',
@@ -284,6 +408,13 @@ function OverviewPanel({ totals, onSelectPanel }) {
             description: 'Kurasi foto dan caption yang pantas jadi bukti sejarah.',
             meta: `${totals.moments} moments`,
             icon: Camera,
+        },
+        {
+            id: 'settings',
+            title: 'Site Settings',
+            description: 'Atur judul dan tagline halaman publik.',
+            meta: 'global copy',
+            icon: Settings,
         },
         {
             id: 'video',
@@ -363,15 +494,178 @@ function OverviewPanel({ totals, onSelectPanel }) {
                 </section>
 
                 <aside className="admin-scrap-note">
-                    <p className="archive-kicker">Archive Health</p>
-                    <h3>Prototype panel aktif. Backend belum disambung.</h3>
+                    <p className="archive-kicker">Welcome Admin</p>
+                    <h3>Panel admin ini untuk upload dokumentasi LHS.</h3>
                     <ul>
-                        <li>Data dashboard sudah dibaca dari API Laravel.</li>
-                        <li>Token admin aktif selama cache backend masih menyimpan kunci.</li>
-                        <li>CRUD form visual akan disambung ke endpoint yang sudah dibuat.</li>
+                        <li>Semua anggota LHS bisa akses panel ini.</li>
+                        <li>Silahkan upload apa aja.</li>
+                        <li>Kalo ada yang kurang kasih saran ke udin.</li>
                     </ul>
                 </aside>
             </div>
+        </section>
+    );
+}
+
+function CategoriesPanel({ categories, onChanged, token }) {
+    const [editingCategory, setEditingCategory] = useState(null);
+    const [form, setForm] = useState(createEmptyCategoryForm());
+    const [formStatus, setFormStatus] = useState('idle');
+    const [panelError, setPanelError] = useState('');
+    const isEditing = Boolean(editingCategory);
+
+    function openCreateForm() {
+        setEditingCategory(null);
+        setForm(createEmptyCategoryForm());
+        setFormStatus('editing');
+        setPanelError('');
+    }
+
+    function openEditForm(category) {
+        setEditingCategory(category);
+        setForm({
+            name: category.name ?? '',
+            slug: category.slug ?? '',
+        });
+        setFormStatus('editing');
+        setPanelError('');
+    }
+
+    function closeForm() {
+        setEditingCategory(null);
+        setForm(createEmptyCategoryForm());
+        setFormStatus('idle');
+        setPanelError('');
+    }
+
+    function updateForm(event) {
+        const { name, value } = event.target;
+
+        setForm((current) => ({
+            ...current,
+            [name]: value,
+        }));
+    }
+
+    async function submitForm(event) {
+        event.preventDefault();
+        setFormStatus('saving');
+        setPanelError('');
+
+        const payload = {
+            name: form.name.trim(),
+            slug: form.slug.trim() || null,
+        };
+
+        try {
+            if (isEditing) {
+                await updateAdminCategory(token, editingCategory.id, payload);
+            } else {
+                await createAdminCategory(token, payload);
+            }
+
+            await onChanged?.();
+            closeForm();
+        } catch (error) {
+            setFormStatus('editing');
+            setPanelError(resolveFormError(error));
+        }
+    }
+
+    async function deleteCategory(category) {
+        const confirmed = window.confirm(`Hapus category "${category.name}"? Link yang memakai category ini akan jadi tanpa category.`);
+
+        if (!confirmed) {
+            return;
+        }
+
+        setPanelError('');
+
+        try {
+            await deleteAdminCategory(token, category.id);
+            await onChanged?.();
+        } catch (error) {
+            setPanelError(resolveFormError(error));
+        }
+    }
+
+    return (
+        <section className="admin-panel">
+            <PanelHeader
+                title="Manage Categories"
+                description="Rapikan grup link archive sebelum semuanya jadi laci campur aduk."
+                actionLabel="Add Category"
+                actionIcon={Tags}
+                onAction={openCreateForm}
+            />
+
+            {panelError && formStatus === 'idle' ? <p className="admin-form-error">{panelError}</p> : null}
+
+            <AdminModal
+                eyebrow={isEditing ? 'Edit Category' : 'New Category'}
+                isOpen={formStatus !== 'idle'}
+                onClose={closeForm}
+                title={isEditing ? editingCategory.name : 'Tambah Category'}
+            >
+                <form className="admin-link-form" onSubmit={submitForm}>
+                    <div className="admin-link-form-grid">
+                        <label>
+                            Name
+                            <input
+                                name="name"
+                                type="text"
+                                value={form.name}
+                                onChange={updateForm}
+                                placeholder="Dokumentasi"
+                                required
+                            />
+                        </label>
+                        <label>
+                            Slug
+                            <input
+                                name="slug"
+                                type="text"
+                                value={form.slug}
+                                onChange={updateForm}
+                                placeholder="dokumentasi"
+                            />
+                        </label>
+                    </div>
+
+                    {panelError ? <p className="admin-form-error">{panelError}</p> : null}
+
+                    <div className="admin-link-form-actions">
+                        <button className="admin-action-button" type="submit" disabled={formStatus === 'saving'}>
+                            <Save size={18} aria-hidden="true" />
+                            {formStatus === 'saving' ? 'Saving...' : isEditing ? 'Save Category' : 'Create Category'}
+                        </button>
+                    </div>
+                </form>
+            </AdminModal>
+
+            {categories.length ? (
+                <div className="admin-category-grid">
+                    {categories.map((category, index) => (
+                        <article
+                            className="admin-category-card"
+                            key={category.id ?? category.slug}
+                            style={{ '--tilt': index % 2 === 0 ? '-0.4deg' : '0.5deg' }}
+                        >
+                            <span>Category</span>
+                            <h3>{category.name}</h3>
+                            <p>/{category.slug}</p>
+                            <AdminCardActions
+                                onDelete={() => deleteCategory(category)}
+                                onEdit={() => openEditForm(category)}
+                            />
+                        </article>
+                    ))}
+                </div>
+            ) : (
+                <AdminEmptyState icon={Tags} title="No categories yet">
+                    Tambah category pertama supaya link archive lebih gampang dibaca.
+                </AdminEmptyState>
+            )}
         </section>
     );
 }
@@ -523,16 +817,18 @@ function LinksPanel({ categories, links, onChanged, token }) {
                                 required
                             />
                         </label>
-                        <label>
-                            Thumbnail URL
-                            <input
-                                name="thumbnail_url"
-                                type="url"
-                                value={form.thumbnail_url}
-                                onChange={updateForm}
-                                placeholder="https://images.example.com/photo.jpg"
+                        <div className="admin-field-stack">
+                            <span className="admin-field-label">Thumbnail</span>
+                            <UploadField
+                                accept="image/jpeg,image/png,image/webp,image/gif"
+                                currentUrl={form.thumbnail_url}
+                                kind="image"
+                                label="Upload thumbnail"
+                                token={token}
+                                onClear={() => setForm((current) => ({ ...current, thumbnail_url: '' }))}
+                                onUploaded={(url) => setForm((current) => ({ ...current, thumbnail_url: url }))}
                             />
-                        </label>
+                        </div>
                         <label className="admin-link-form-wide">
                             Description
                             <textarea
@@ -577,26 +873,38 @@ function LinksPanel({ categories, links, onChanged, token }) {
 
             {panelError && formStatus === 'idle' ? <p className="admin-form-error">{panelError}</p> : null}
 
-            <div className="admin-link-grid">
-                {links.map((link, index) => (
-                    <article
-                        className="admin-link-card"
-                        key={link.title}
-                        style={{ '--tilt': index % 3 === 0 ? '-0.7deg' : index % 3 === 1 ? '0deg' : '0.8deg' }}
-                    >
-                        <div className="admin-link-thumb">
-                            <img src={link.thumbnailUrl} alt={link.title} />
-                            <span>{link.category}</span>
-                        </div>
-                        <h3>{link.title}</h3>
-                        <p>{link.description}</p>
-                        <div className="admin-card-footer">
-                            <span>Added: Jun {12 + index}, 2026</span>
-                            <AdminCardActions onDelete={() => deleteLink(link)} onEdit={() => openEditForm(link)} />
-                        </div>
-                    </article>
-                ))}
-            </div>
+            {links.length ? (
+                <div className="admin-link-grid">
+                    {links.map((link, index) => (
+                        <article
+                            className="admin-link-card"
+                            key={link.id ?? link.title}
+                            style={{ '--tilt': index % 3 === 0 ? '-0.7deg' : index % 3 === 1 ? '0deg' : '0.8deg' }}
+                        >
+                            <div className="admin-link-thumb">
+                                {link.thumbnailUrl ? (
+                                    <img src={link.thumbnailUrl} alt={link.title} />
+                                ) : (
+                                    <div className="admin-empty-photo">
+                                        <Link2 size={34} aria-hidden="true" />
+                                    </div>
+                                )}
+                                <span>{link.category}</span>
+                            </div>
+                            <h3>{link.title}</h3>
+                            <p>{link.description}</p>
+                            <div className="admin-card-footer">
+                                <span>Order: {link.sortOrder ?? index}</span>
+                                <AdminCardActions onDelete={() => deleteLink(link)} onEdit={() => openEditForm(link)} />
+                            </div>
+                        </article>
+                    ))}
+                </div>
+            ) : (
+                <AdminEmptyState icon={Link2} title="No links yet">
+                    Tambah link pertama untuk mulai mengisi archive.
+                </AdminEmptyState>
+            )}
         </section>
     );
 }
@@ -739,6 +1047,12 @@ function MomentsPanel({ moments, onChanged, token }) {
         setPhotoFormStatus('saving');
         setPanelError('');
 
+        if (!photoForm.image_url.trim()) {
+            setPhotoFormStatus('editing');
+            setPanelError('Upload photo dulu sebelum menyimpan.');
+            return;
+        }
+
         const payload = {
             moment_id: Number(photoForm.moment_id),
             image_url: photoForm.image_url.trim(),
@@ -853,17 +1167,17 @@ function MomentsPanel({ moments, onChanged, token }) {
             >
                 <form className="admin-link-form" onSubmit={submitPhotoForm}>
                     <div className="admin-link-form-grid">
-                        <label>
-                            Image URL
-                            <input
-                                name="image_url"
-                                type="url"
-                                value={photoForm.image_url}
-                                onChange={updatePhotoForm}
-                                placeholder="https://images.example.com/photo.jpg"
-                                required
+                        <div className="admin-field-stack">
+                            <span className="admin-field-label">Photo File</span>
+                            <UploadField
+                                accept="image/jpeg,image/png,image/webp,image/gif"
+                                currentUrl={photoForm.image_url}
+                                kind="image"
+                                label="Upload photo"
+                                token={token}
+                                onUploaded={(url) => setPhotoForm((current) => ({ ...current, image_url: url }))}
                             />
-                        </label>
+                        </div>
                         <label>
                             Rotation
                             <input
@@ -925,70 +1239,226 @@ function MomentsPanel({ moments, onChanged, token }) {
                 </form>
             </AdminModal>
 
-            <div className="admin-polaroid-grid">
-                {moments.map((moment, index) => (
-                    <article
-                        className={photoMoment?.id === moment.id ? 'admin-polaroid-admin-card is-selected' : 'admin-polaroid-admin-card'}
-                        key={moment.id ?? moment.title}
-                        style={{ '--tilt': moment.rotation }}
-                    >
-                        <div className="admin-polaroid-photo">
-                            {moment.imageUrl ? (
-                                <img src={moment.imageUrl} alt={moment.title} />
-                            ) : (
-                                <div className="admin-empty-photo">
-                                    <Camera size={42} aria-hidden="true" />
-                                </div>
-                            )}
-                        </div>
-                        <div>
-                            <p>{moment.title}</p>
-                            <span>{moment.photoCount ?? momentPhotoCounts[index] ?? 6} Photos</span>
-                        </div>
-                        <AdminFloatingActions
-                            onAddPhoto={() => openCreatePhotoForm(moment)}
-                            onDelete={() => deleteMoment(moment)}
-                            onEdit={() => openEditMomentForm(moment)}
-                        />
-                    </article>
-                ))}
-            </div>
+            {moments.length ? (
+                <div className="admin-polaroid-grid">
+                    {moments.map((moment, index) => (
+                        <article
+                            className={photoMoment?.id === moment.id ? 'admin-polaroid-admin-card is-selected' : 'admin-polaroid-admin-card'}
+                            key={moment.id ?? moment.title}
+                            style={{ '--tilt': moment.rotation }}
+                        >
+                            <div className="admin-polaroid-photo">
+                                {moment.imageUrl ? (
+                                    <img src={moment.imageUrl} alt={moment.title} />
+                                ) : (
+                                    <div className="admin-empty-photo">
+                                        <Camera size={42} aria-hidden="true" />
+                                    </div>
+                                )}
+                            </div>
+                            <div>
+                                <p>{moment.title}</p>
+                                <span>{moment.photoCount ?? momentPhotoCounts[index] ?? 6} Photos</span>
+                            </div>
+                            <AdminFloatingActions
+                                onAddPhoto={() => openCreatePhotoForm(moment)}
+                                onDelete={() => deleteMoment(moment)}
+                                onEdit={() => openEditMomentForm(moment)}
+                            />
+                        </article>
+                    ))}
+                </div>
+            ) : (
+                <AdminEmptyState icon={Camera} title="No moments yet">
+                    Buat moment pertama, lalu tambahkan foto-foto polaroidnya.
+                </AdminEmptyState>
+            )}
         </section>
     );
 }
 
-function VideoPanel({ bestMoment }) {
+function SettingsPanel({ bestMoment, onChanged, siteSettings, token }) {
+    const [form, setForm] = useState(createSiteSettingsForm(siteSettings));
+    const [formStatus, setFormStatus] = useState('idle');
+    const [formError, setFormError] = useState('');
+
+    useEffect(() => {
+        setForm(createSiteSettingsForm(siteSettings));
+    }, [siteSettings.tagline, siteSettings.title]);
+
+    function updateForm(event) {
+        const { name, value } = event.target;
+
+        setFormStatus('idle');
+        setFormError('');
+        setForm((current) => ({
+            ...current,
+            [name]: value,
+        }));
+    }
+
+    async function submitForm(event) {
+        event.preventDefault();
+        setFormStatus('saving');
+        setFormError('');
+
+        try {
+            await updateAdminSettings(
+                token,
+                createSettingsPayload(siteSettings, bestMoment, {
+                    site_title: form.site_title.trim(),
+                    tagline: form.tagline.trim() || null,
+                }),
+            );
+            await onChanged?.();
+            setFormStatus('saved');
+        } catch (error) {
+            setFormStatus('idle');
+            setFormError(resolveFormError(error));
+        }
+    }
+
+    return (
+        <section className="admin-panel">
+            <PanelHeader
+                title="Site Settings"
+                description="Atur identitas utama yang muncul di halaman publik."
+            />
+
+            <form className="admin-form-card admin-settings-form" onSubmit={submitForm}>
+                <h3>Public Copy</h3>
+                <label>
+                    Site Title
+                    <input
+                        name="site_title"
+                        type="text"
+                        value={form.site_title}
+                        onChange={updateForm}
+                        placeholder="LHS Archive"
+                        required
+                    />
+                </label>
+                <label>
+                    Tagline
+                    <textarea
+                        name="tagline"
+                        rows="4"
+                        value={form.tagline}
+                        onChange={updateForm}
+                        placeholder="Tempat kecil buat nyimpen semua hal yang pernah rame bareng."
+                    />
+                </label>
+
+                {formError ? <p className="admin-form-error">{formError}</p> : null}
+                {formStatus === 'saved' ? <p className="admin-form-success">Site settings saved.</p> : null}
+
+                <div className="admin-link-form-actions">
+                    <button className="admin-action-button" type="submit" disabled={formStatus === 'saving'}>
+                        <Save size={18} aria-hidden="true" />
+                        {formStatus === 'saving' ? 'Saving...' : 'Save Settings'}
+                    </button>
+                </div>
+            </form>
+        </section>
+    );
+}
+
+function VideoPanel({ bestMoment, onChanged, siteSettings, token }) {
+    const [form, setForm] = useState(createVideoSettingsForm(bestMoment));
+    const [formStatus, setFormStatus] = useState('idle');
+    const [formError, setFormError] = useState('');
+    const previewTitle = form.best_moment_title || bestMoment.title;
+    const previewDescription = form.best_moment_description || bestMoment.description;
+
+    useEffect(() => {
+        setForm(createVideoSettingsForm(bestMoment));
+    }, [bestMoment.description, bestMoment.title, bestMoment.videoUrl]);
+
+    function updateForm(event) {
+        const { name, value } = event.target;
+
+        setFormStatus('idle');
+        setFormError('');
+        setForm((current) => ({
+            ...current,
+            [name]: value,
+        }));
+    }
+
+    async function submitForm(event) {
+        event.preventDefault();
+        setFormStatus('saving');
+        setFormError('');
+
+        try {
+            await updateAdminSettings(
+                token,
+                createSettingsPayload(siteSettings, bestMoment, {
+                    best_moment_title: form.best_moment_title.trim() || null,
+                    best_moment_description: form.best_moment_description.trim() || null,
+                    best_moment_video_url: form.best_moment_video_url.trim() || null,
+                }),
+            );
+            await onChanged?.();
+            setFormStatus('saved');
+        } catch (error) {
+            setFormStatus('idle');
+            setFormError(resolveFormError(error));
+        }
+    }
+
     return (
         <section className="admin-panel">
             <PanelHeader
                 title="Best Moment Video"
                 description="Manage the featured video spotlight. This video will set the tone on the public archive."
-                actionLabel="Save Changes"
-                actionIcon={Save}
             />
 
             <div className="admin-video-layout">
                 <div className="admin-video-settings">
-                    <section className="admin-form-card">
+                    <form className="admin-form-card" onSubmit={submitForm}>
                         <h3>Video Details</h3>
                         <label>
                             Video Title
-                            <input type="text" defaultValue={bestMoment.title} />
+                            <input
+                                name="best_moment_title"
+                                type="text"
+                                value={form.best_moment_title}
+                                onChange={updateForm}
+                                placeholder="Malam Keakraban 2023"
+                            />
                         </label>
                         <label>
                             Description
-                            <textarea rows="4" defaultValue={bestMoment.description} />
+                            <textarea
+                                name="best_moment_description"
+                                rows="4"
+                                value={form.best_moment_description}
+                                onChange={updateForm}
+                                placeholder="Satu video buat membuktikan kalau chaos juga bisa terlihat sinematik."
+                            />
                         </label>
-                        <label>
-                            Source URL
-                            <input type="url" defaultValue="https://example.com/best-moment.mp4" />
-                        </label>
-                        <div className="admin-upload-zone">
-                            <Upload size={28} aria-hidden="true" />
-                            <p>Drag & Drop or <span>Browse</span></p>
-                            <small>MP4, WebM (Max 50MB)</small>
+                        <div className="admin-field-stack">
+                            <span className="admin-field-label">Video File</span>
+                            <UploadField
+                                accept="video/mp4,video/webm,video/quicktime"
+                                currentUrl={form.best_moment_video_url}
+                                kind="video"
+                                label="Upload video"
+                                token={token}
+                                onClear={() => setForm((current) => ({ ...current, best_moment_video_url: '' }))}
+                                onUploaded={(url) => setForm((current) => ({ ...current, best_moment_video_url: url }))}
+                            />
                         </div>
-                    </section>
+                        {formError ? <p className="admin-form-error">{formError}</p> : null}
+                        {formStatus === 'saved' ? <p className="admin-form-success">Best moment saved.</p> : null}
+                        <div className="admin-link-form-actions">
+                            <button className="admin-action-button" type="submit" disabled={formStatus === 'saving'}>
+                                <Save size={18} aria-hidden="true" />
+                                {formStatus === 'saving' ? 'Saving...' : 'Save Video'}
+                            </button>
+                        </div>
+                    </form>
 
                     <aside className="admin-director-note">
                         <p className="archive-kicker">Director's Note</p>
@@ -1008,8 +1478,8 @@ function VideoPanel({ bestMoment }) {
                         </button>
                         <div>
                             <span>Featured</span>
-                            <h3>{bestMoment.title}</h3>
-                            <p>{bestMoment.description}</p>
+                            <h3>{previewTitle}</h3>
+                            <p>{previewDescription}</p>
                         </div>
                     </div>
                 </section>
@@ -1172,16 +1642,18 @@ function MembersPanel({ members, onChanged, token }) {
                                 onChange={updateForm}
                             />
                         </label>
-                        <label className="admin-link-form-wide">
-                            Photo URL
-                            <input
-                                name="photo_url"
-                                type="url"
-                                value={form.photo_url}
-                                onChange={updateForm}
-                                placeholder="https://images.example.com/member.jpg"
+                        <div className="admin-field-stack admin-link-form-wide">
+                            <span className="admin-field-label">Photo File</span>
+                            <UploadField
+                                accept="image/jpeg,image/png,image/webp,image/gif"
+                                currentUrl={form.photo_url}
+                                kind="image"
+                                label="Upload member photo"
+                                token={token}
+                                onClear={() => setForm((current) => ({ ...current, photo_url: '' }))}
+                                onUploaded={(url) => setForm((current) => ({ ...current, photo_url: url }))}
                             />
-                        </label>
+                        </div>
                         <label className="admin-link-form-wide">
                             Instagram URL
                             <input
@@ -1225,97 +1697,205 @@ function MembersPanel({ members, onChanged, token }) {
                 </form>
             </AdminModal>
 
-            <div className="admin-member-grid">
-                {members.map((member, index) => (
-                    <article
-                        className="admin-member-admin-card"
-                        key={member.id ?? member.name}
-                        style={{ '--tilt': index % 2 === 0 ? '-0.6deg' : '0.7deg' }}
-                    >
-                        {member.photoUrl ? (
-                            <img src={member.photoUrl} alt={member.name} />
-                        ) : (
-                            <div className="admin-member-empty-photo">
-                                <UsersRound size={38} aria-hidden="true" />
-                            </div>
-                        )}
-                        <span>{member.role || 'Archived Human'}</span>
-                        <h3>{member.name}</h3>
-                        {member.nickname ? <small className="admin-member-nickname">@{member.nickname}</small> : null}
-                        <p>{member.quote || 'Belum ada quote. Masih misterius, masih valid.'}</p>
-                        {member.funFact ? <small className="admin-member-fun-fact">{member.funFact}</small> : null}
-                        {member.id ? (
-                            <AdminCardActions onDelete={() => deleteMember(member)} onEdit={() => openEditForm(member)} />
-                        ) : null}
-                    </article>
-                ))}
-            </div>
+            {members.length ? (
+                <div className="admin-member-grid">
+                    {members.map((member, index) => (
+                        <article
+                            className="admin-member-admin-card"
+                            key={member.id ?? member.name}
+                            style={{ '--tilt': index % 2 === 0 ? '-0.6deg' : '0.7deg' }}
+                        >
+                            {member.photoUrl ? (
+                                <img src={member.photoUrl} alt={member.name} />
+                            ) : (
+                                <div className="admin-member-empty-photo">
+                                    <UsersRound size={38} aria-hidden="true" />
+                                </div>
+                            )}
+                            <span>{member.role || 'Archived Human'}</span>
+                            <h3>{member.name}</h3>
+                            {member.nickname ? <small className="admin-member-nickname">@{member.nickname}</small> : null}
+                            <p>{member.quote || 'Belum ada quote. Masih misterius, masih valid.'}</p>
+                            {member.funFact ? <small className="admin-member-fun-fact">{member.funFact}</small> : null}
+                            {member.id ? (
+                                <AdminCardActions onDelete={() => deleteMember(member)} onEdit={() => openEditForm(member)} />
+                            ) : null}
+                        </article>
+                    ))}
+                </div>
+            ) : (
+                <AdminEmptyState icon={UsersRound} title="No members yet">
+                    Tambah manusia pertama yang layak masuk arsip.
+                </AdminEmptyState>
+            )}
         </section>
     );
 }
 
-function MessagesPanel({ messages }) {
+function MessagesPanel({ messages, onChanged, token }) {
+    const [panelError, setPanelError] = useState('');
+    const [actionId, setActionId] = useState('');
+
+    async function toggleVisibility(message) {
+        setActionId(`visibility-${message.id}`);
+        setPanelError('');
+
+        try {
+            await updateAdminMessageVisibility(token, message.id, !message.isVisible);
+            await onChanged?.();
+        } catch (error) {
+            setPanelError(resolveFormError(error));
+        } finally {
+            setActionId('');
+        }
+    }
+
+    async function deleteMessage(message) {
+        const confirmed = window.confirm(`Hapus pesan dari "${message.name}"?`);
+
+        if (!confirmed) {
+            return;
+        }
+
+        setActionId(`delete-${message.id}`);
+        setPanelError('');
+
+        try {
+            await deleteAdminMessage(token, message.id);
+            await onChanged?.();
+        } catch (error) {
+            setPanelError(resolveFormError(error));
+        } finally {
+            setActionId('');
+        }
+    }
+
     return (
         <section className="admin-panel">
             <PanelHeader
                 title="Visitor Messages"
                 description="Moderasi pesan kenangan sebelum sticky note-nya jadi legenda publik."
-                actionLabel="Export Notes"
                 actionIcon={FileText}
             />
 
-            <div className="admin-message-grid">
-                {messages.map((message, index) => (
-                    <article
-                        className="admin-message-note"
-                        key={`${message.name}-${message.message}`}
-                        style={{ '--tilt': message.rotation }}
-                    >
-                        <p>{message.message}</p>
-                        <span>{message.name}</span>
-                        <div>
-                            <button type="button">
-                                <CheckCircle2 size={17} aria-hidden="true" />
-                                Visible
-                            </button>
-                            <button type="button">
-                                <Trash2 size={17} aria-hidden="true" />
-                                Delete
-                            </button>
-                        </div>
-                    </article>
-                ))}
-            </div>
+            {panelError ? <p className="admin-form-error">{panelError}</p> : null}
+
+            {messages.length ? (
+                <div className="admin-message-grid">
+                    {messages.map((message) => {
+                        const isVisible = message.isVisible !== false;
+
+                        return (
+                            <article
+                                className={isVisible ? 'admin-message-note' : 'admin-message-note is-hidden'}
+                                key={message.id ?? `${message.name}-${message.message}`}
+                                style={{ '--tilt': message.rotation }}
+                            >
+                                <p>{message.message}</p>
+                                <span>{message.name}</span>
+                                <small className="admin-message-status">{isVisible ? 'Visible' : 'Hidden'}</small>
+                                <div>
+                                    <button
+                                        type="button"
+                                        disabled={!message.id || actionId === `visibility-${message.id}`}
+                                        onClick={() => toggleVisibility(message)}
+                                    >
+                                        <CheckCircle2 size={17} aria-hidden="true" />
+                                        {isVisible ? 'Hide' : 'Show'}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        disabled={!message.id || actionId === `delete-${message.id}`}
+                                        onClick={() => deleteMessage(message)}
+                                    >
+                                        <Trash2 size={17} aria-hidden="true" />
+                                        Delete
+                                    </button>
+                                </div>
+                            </article>
+                        );
+                    })}
+                </div>
+            ) : (
+                <AdminEmptyState icon={MessageSquareText} title="No messages yet">
+                    Belum ada pesan masuk dari halaman publik.
+                </AdminEmptyState>
+            )}
         </section>
     );
 }
 
-function MusicPanel({ siteSettings }) {
+function MusicPanel({ bestMoment, onChanged, siteSettings, token }) {
+    const [form, setForm] = useState(createMusicSettingsForm(siteSettings));
+    const [formStatus, setFormStatus] = useState('idle');
+    const [formError, setFormError] = useState('');
+
+    useEffect(() => {
+        setForm(createMusicSettingsForm(siteSettings));
+    }, [siteSettings.music?.url]);
+
+    function updateForm(event) {
+        const { name, value } = event.target;
+
+        setFormStatus('idle');
+        setFormError('');
+        setForm((current) => ({
+            ...current,
+            [name]: value,
+        }));
+    }
+
+    async function submitForm(event) {
+        event.preventDefault();
+        setFormStatus('saving');
+        setFormError('');
+
+        try {
+            await updateAdminSettings(
+                token,
+                createSettingsPayload(siteSettings, bestMoment, {
+                    background_music_url: form.background_music_url.trim() || null,
+                }),
+            );
+            await onChanged?.();
+            setFormStatus('saved');
+        } catch (error) {
+            setFormStatus('idle');
+            setFormError(resolveFormError(error));
+        }
+    }
+
     return (
         <section className="admin-panel">
             <PanelHeader
                 title="Music Background"
                 description="Atur lagu yang muncul lewat tombol Play Memory di kanan bawah halaman publik."
-                actionLabel="Save Music"
-                actionIcon={Volume2}
             />
 
             <div className="admin-music-layout">
-                <section className="admin-form-card">
+                <form className="admin-form-card" onSubmit={submitForm}>
                     <h3>Audio Settings</h3>
-                    <label>
-                        Button Label
-                        <input type="text" defaultValue={siteSettings.music.title} />
-                    </label>
-                    <label>
-                        Audio URL
-                        <input type="url" defaultValue={siteSettings.music.url} />
-                    </label>
-                    <label>
-                        Default Volume
-                        <input type="range" min="0" max="100" defaultValue="20" />
-                    </label>
-                </section>
+                    <div className="admin-field-stack">
+                        <span className="admin-field-label">Audio File</span>
+                        <UploadField
+                            accept="audio/mpeg,audio/wav,audio/ogg,audio/mp4"
+                            currentUrl={form.background_music_url}
+                            kind="audio"
+                            label="Upload audio"
+                            token={token}
+                            onClear={() => setForm((current) => ({ ...current, background_music_url: '' }))}
+                            onUploaded={(url) => setForm((current) => ({ ...current, background_music_url: url }))}
+                        />
+                    </div>
+                    {formError ? <p className="admin-form-error">{formError}</p> : null}
+                    {formStatus === 'saved' ? <p className="admin-form-success">Music saved.</p> : null}
+                    <div className="admin-link-form-actions">
+                        <button className="admin-action-button" type="submit" disabled={formStatus === 'saving'}>
+                            <Volume2 size={18} aria-hidden="true" />
+                            {formStatus === 'saving' ? 'Saving...' : 'Save Music'}
+                        </button>
+                    </div>
+                </form>
 
                 <aside className="admin-music-preview">
                     <p className="archive-kicker">Public Button Preview</p>
@@ -1323,7 +1903,7 @@ function MusicPanel({ siteSettings }) {
                         <Volume2 size={18} aria-hidden="true" />
                         {siteSettings.music.title}
                     </button>
-                    <p>Browser biasanya butuh interaksi user sebelum musik bisa play. Jadi tombol tetap jadi kontrol utama.</p>
+                    <p>{form.background_music_url ? formatMediaName(form.background_music_url) : 'No audio uploaded yet.'}</p>
                 </aside>
             </div>
         </section>
@@ -1424,10 +2004,10 @@ function mapAdminDashboard(dashboard) {
             name: category.name,
             slug: category.slug,
         })),
-        links: mappedLinks.length ? mappedLinks : fallbackArchiveLinks,
-        moments: mappedMoments.length ? mappedMoments : fallbackMoments,
-        members: mappedMembers.length ? mappedMembers : fallbackMembers,
-        messages: mappedMessages.length ? mappedMessages : fallbackMessages,
+        links: mappedLinks,
+        moments: mappedMoments,
+        members: mappedMembers,
+        messages: mappedMessages,
         siteSettings: {
             ...fallbackSiteSettings,
             title: settings.site_title ?? fallbackSiteSettings.title,
@@ -1455,6 +2035,13 @@ function createEmptyLinkForm(categories) {
         thumbnail_url: '',
         is_featured: false,
         sort_order: '0',
+    };
+}
+
+function createEmptyCategoryForm() {
+    return {
+        name: '',
+        slug: '',
     };
 }
 
@@ -1487,6 +2074,58 @@ function createEmptyMemberForm() {
         fun_fact: '',
         sort_order: '0',
     };
+}
+
+function createSiteSettingsForm(siteSettings) {
+    return {
+        site_title: siteSettings.title ?? fallbackSiteSettings.title,
+        tagline: siteSettings.tagline ?? '',
+    };
+}
+
+function createVideoSettingsForm(bestMoment) {
+    return {
+        best_moment_title: bestMoment.title ?? '',
+        best_moment_description: bestMoment.description ?? '',
+        best_moment_video_url: bestMoment.videoUrl ?? '',
+    };
+}
+
+function createMusicSettingsForm(siteSettings) {
+    return {
+        background_music_url: siteSettings.music?.url ?? '',
+    };
+}
+
+function createSettingsPayload(siteSettings, bestMoment, overrides = {}) {
+    return {
+        site_title: siteSettings.title ?? fallbackSiteSettings.title,
+        tagline: siteSettings.tagline ?? null,
+        best_moment_title: bestMoment.title ?? null,
+        best_moment_description: bestMoment.description ?? null,
+        best_moment_video_url: bestMoment.videoUrl || null,
+        background_music_url: siteSettings.music?.url || null,
+        ...overrides,
+    };
+}
+
+function formatMediaName(url) {
+    if (!url) {
+        return '';
+    }
+
+    const cleanUrl = url.split('?')[0].split('#')[0];
+    const fileName = cleanUrl.split('/').filter(Boolean).pop();
+
+    if (!fileName) {
+        return 'Current file ready';
+    }
+
+    try {
+        return decodeURIComponent(fileName);
+    } catch {
+        return fileName;
+    }
 }
 
 function resolveFormError(error) {

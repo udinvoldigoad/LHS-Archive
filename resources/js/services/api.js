@@ -25,9 +25,10 @@ export function clearAdminToken() {
 }
 
 async function request(path, options = {}) {
+    const isFormData = typeof FormData !== 'undefined' && options.data instanceof FormData;
     const headers = {
         Accept: 'application/json',
-        ...(options.data ? { 'Content-Type': 'application/json' } : {}),
+        ...(options.data && !isFormData ? { 'Content-Type': 'application/json' } : {}),
         ...(options.token ? { Authorization: `Bearer ${options.token}` } : {}),
         ...options.headers,
     };
@@ -35,7 +36,7 @@ async function request(path, options = {}) {
     const response = await fetch(path, {
         method: options.method ?? 'GET',
         headers,
-        body: options.data ? JSON.stringify(options.data) : undefined,
+        body: options.data ? (isFormData ? options.data : JSON.stringify(options.data)) : undefined,
     });
 
     const contentType = response.headers.get('content-type') ?? '';
@@ -83,6 +84,49 @@ export function logoutAdmin(token) {
 
 export function fetchAdminDashboard(token) {
     return request('/api/admin/dashboard', { token });
+}
+
+export function updateAdminSettings(token, data) {
+    return request('/api/admin/settings', {
+        method: 'PUT',
+        token,
+        data,
+    });
+}
+
+export function uploadAdminMedia(token, file, kind) {
+    const data = new FormData();
+    data.append('kind', kind);
+    data.append('file', file);
+
+    return request('/api/admin/uploads', {
+        method: 'POST',
+        token,
+        data,
+    });
+}
+
+export function createAdminCategory(token, data) {
+    return request('/api/admin/categories', {
+        method: 'POST',
+        token,
+        data,
+    });
+}
+
+export function updateAdminCategory(token, id, data) {
+    return request(`/api/admin/categories/${id}`, {
+        method: 'PUT',
+        token,
+        data,
+    });
+}
+
+export function deleteAdminCategory(token, id) {
+    return request(`/api/admin/categories/${id}`, {
+        method: 'DELETE',
+        token,
+    });
 }
 
 export function createAdminLink(token, data) {
@@ -172,6 +216,21 @@ export function updateAdminMember(token, id, data) {
 
 export function deleteAdminMember(token, id) {
     return request(`/api/admin/members/${id}`, {
+        method: 'DELETE',
+        token,
+    });
+}
+
+export function updateAdminMessageVisibility(token, id, isVisible) {
+    return request(`/api/admin/messages/${id}/visibility`, {
+        method: 'PUT',
+        token,
+        data: { is_visible: isVisible },
+    });
+}
+
+export function deleteAdminMessage(token, id) {
+    return request(`/api/admin/messages/${id}`, {
         method: 'DELETE',
         token,
     });
